@@ -1,5 +1,5 @@
-label = "devops-brian-dev"
-k8s_version = "1.23"
+label = "kentest-11"
+k8s_version = "1.24"
 region = "us-east"
 pools = [
   {
@@ -7,3 +7,4 @@ pools = [
     count : 3
   }
 ]
+email = "w@qrk.us"

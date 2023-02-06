@@ -1,0 +1,6 @@
+ingress:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: cert-manager-global
+  hosts:
+    - host: ziti.lke.bingnet.cloud

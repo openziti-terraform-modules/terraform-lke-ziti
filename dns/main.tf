@@ -1,11 +1,12 @@
 terraform {
   cloud {
-    organization = "brianhh12301"
+    organization = "bingnet"   # customize to your tf cloud org name
 
     workspaces {
-      name = "linode-terraform-dns"
+      name = "linode-dns-lab"  # unique remote state for this tf plan
     }
   }
+
   required_providers {
     linode = {
       source  = "linode/linode"
@@ -21,28 +22,13 @@ provider "linode" {
 resource "linode_domain" "master_domain" {
     type = "master"
     domain = var.domain_name
-    soa_email = var.soa_email
+    soa_email = var.email
     tags = var.tags
 }
 
-resource "linode_domain_record" "rasa_dns_record" {
+resource "linode_domain_record" "ingress_domain_name_record" {
     domain_id = linode_domain.master_domain.id
-    name = var.rasa_dns
+    name = var.ingress_domain_name
     record_type = "A"
     target = var.nodebalancer_ip
-}
-
-resource "linode_domain_record" "github_pages" {
-    domain_id = linode_domain.master_domain.id
-    count = length(var.github_pages_ips)
-    name = var.domain_name
-    record_type = "A"
-    target = var.github_pages_ips[count.index]
-}
-
-resource "linode_domain_record" "github_cname" {
-    domain_id = linode_domain.master_domain.id
-    name = "www"
-    record_type = "CNAME"
-    target = var.github_pages_alias
 }

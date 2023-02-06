@@ -10,13 +10,12 @@ variable "domain_name" {
     description = "The domain name to create/modify"
 }
 
-variable "soa_email" {
+variable "email" {
     description = "The start of authority email address."
 }
 
-variable "rasa_dns" {
-    description = "The subdomain name to use for rasa_dns record"
-    default = "rasa"
+variable "ingress_domain_name" {
+    description = "The subdomain name to use for ingress_domain_name record"
 }
 
 variable "tags" {
@@ -34,18 +33,4 @@ variable "linode_nameservers" {
         "ns4.linode.com",
         "ns5.linode.com"
     ] 
-}
-
-variable "github_pages_alias" {
-    description = "The github pages address for your page."
-}
-
-variable "github_pages_ips" {
-    description = "The github pages ip's"
-    default     =   [
-        "185.199.108.153",
-        "185.199.109.153",
-        "185.199.110.153",
-        "185.199.111.153"
-    ]
 }

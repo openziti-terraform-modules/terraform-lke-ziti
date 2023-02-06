@@ -36,3 +36,8 @@ variable "pools" {
         }
     ]
 }
+
+variable "email" {
+    description = "The email address cert-manager should submit during ACME request to Let's Encrypt for server certs."
+}
+

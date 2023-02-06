@@ -31,7 +31,7 @@ Sensitive Variables
 There are some variables throughout this setup that are sensitive and you don't want to store in your ``terraform.tfvars`` file, so for these you will do a ``export`` command to set the variables on your own shell.
 
 1. As mentioned already in the previous step you will want to from your shell run ``export TF_VAR_token=XXX`` which is the Linode API token you already setup in the previous section.
-2. The ``export TF_VAR_soa_email=xxx@xxx.com`` needs to be ran to export the email that is associated with the domain when registered.
+2. The ``export TF_VAR_email=xxx@xxx.com`` needs to be ran to export the email that is associated with the domain when registered.
 3. The ``export TF_VAR_nodebalancer_ip=X.X.X.X`` will be the IP of the nodebalancer that was setup in the previous kubernetes step.
 
 Other Variables
@@ -63,7 +63,7 @@ Deploy DNS/Domain Terraform
 ---------------------------
 As long as we didn't have any issues with the previous Init & Plan step we can now deploy our dns & domain changes..
 
-Ensuring we still have our ``TF_VAR_token, TF_VAR_soa_email, and TF_VAR_nodebalancer_ip`` exported on our shell then we can run:
+Ensuring we still have our ``TF_VAR_token, TF_VAR_email, and TF_VAR_nodebalancer_ip`` exported on our shell then we can run:
 
 ``terraform apply -var-file="terraform.tfvars"`` which should ask for a yes prompt and then will deploy the cluster and will generate your kubeconfig to connect to it.
 
