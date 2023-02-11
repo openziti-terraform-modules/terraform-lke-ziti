@@ -31,6 +31,7 @@ override.tf.json
 
 # k8s stuff
 kube-config
+kubeconfig
 lke-cluster-config.yaml
 
 # python
@@ -38,3 +39,6 @@ lke-cluster-config.yaml
 
 # Docs Stuff
 docs/_build
+
+# temp charts bind
+charts/
