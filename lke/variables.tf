@@ -47,10 +47,35 @@ variable "domain_name" {
 
 variable "ingress_domain_name" {
     description = "The subdomain name to use for ingress_domain_name record"
-    default     = "ziti"
+    default     = "*"  # wildcard DNS record resolves all names to the Nodebalancer
+}
+
+variable "ziti_domain_name" {
+    description = "The subdomain name to use for Ziti console"
+    default     = "ziti"  # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "cluster_issuer" {
     description = "name of the cluster-wide certificate issuer for Let's Encrypt"
     default     = "cert-manager-global"
+}
+
+variable "ziti_ctrl_port" {
+    description = "Ziti ctrl plane port for routers that's provided by the Ziti controller"
+    default     = 6262
+}
+
+variable "ziti_client_port" {
+    description = "Ziti Edge client API port for SDK enrollment, auth, discovery"
+    default     = 1280
+}
+
+variable "ziti_mgmt_port" {
+    description = "Ziti Edge mgmt API port for ziti CLI and console"
+    default     = 1281
+}
+
+variable "ziti_controller_namespace" {
+    description = "Ziti Controller namespace"
+    default     = "ziti-controller"
 }

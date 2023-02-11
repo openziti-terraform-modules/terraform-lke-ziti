@@ -3,4 +3,9 @@ ingress:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: ${cluster_issuer}
   hosts:
-    - host: ${ingress_domain_name}.${domain_name}
+    - host: ${ziti_domain_name}.${domain_name}
+settings:
+  edgeControllers:
+    - name: Ziti Edge Mgmt API
+      url: https://${controller_release}-mgmt.${controller_namespace}.svc:${edge_mgmt_port}
+      default: true

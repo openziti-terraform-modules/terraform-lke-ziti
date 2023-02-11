@@ -82,12 +82,22 @@ module "cert_manager" {
   }]
 }
 
+resource "kubernetes_namespace" ziti_controller {
+  metadata {
+    name = var.ziti_controller_namespace
+  }
+}
+
 resource "helm_release" "trust_manager" {
-  depends_on   = [module.cert_manager]
+  depends_on   = [module.cert_manager, kubernetes_namespace.ziti_controller]
   chart      = "trust-manager"
   repository = "https://charts.jetstack.io"
   name       = "trust-manager"
   namespace  = module.cert_manager.namespace
+  set {
+    name = "app.trust.namespace"
+    value = var.ziti_controller_namespace
+  }
 }
 
 resource "linode_nodebalancer" "ingress_nginx_nodebalancer" {
@@ -126,12 +136,35 @@ resource "linode_domain_record" "ingress_domain_name_record" {
     target = linode_nodebalancer.ingress_nginx_nodebalancer.ipv4
 }
 
+data "template_file" "ziti_controller_values" {
+  template = "${file("ziti-controller-values.yaml.tpl")}"
+  vars = {
+    ctrl_port = var.ziti_ctrl_port
+    client_port = var.ziti_client_port
+    mgmt_port = var.ziti_mgmt_port
+    ziti_domain_name = var.ziti_domain_name
+    domain_name = var.domain_name
+  }
+}
+
+resource "helm_release" "ziti_controller" {
+  depends_on = [helm_release.trust_manager]
+  namespace = var.ziti_controller_namespace
+  create_namespace = true
+  name = "ziti-controller-release02"
+  chart = "./charts/ziti-controller"
+  values = [data.template_file.ziti_controller_values.rendered]
+}
+
 data "template_file" "ziti_console_values" {
   template = "${file("ziti-console-values.yaml.tpl")}"
   vars = {
     cluster_issuer = var.cluster_issuer
     domain_name = var.domain_name
-    ingress_domain_name = var.ingress_domain_name
+    ziti_domain_name = var.ziti_domain_name
+    controller_namespace = helm_release.ziti_controller.namespace
+    controller_release = helm_release.ziti_controller.name
+    edge_mgmt_port = var.ziti_mgmt_port
   }
 }
 
@@ -142,19 +175,4 @@ resource "helm_release" "ziti-console" {
   values = [data.template_file.ziti_console_values.rendered]
 }
 
-# resource "helm_release" "ziti-controller" {
-#   depends_on = [helm_release.trust_manager]
-#   namespace = "ziti-controller"
-#   create_namespace = true
-#   name = "ziti-controller-release"
-#   chart = "./charts/ziti-controller"
-#   set {
-#     name = "advertisedHost"
-#     value = "ziti.lke.bingnet.cloud"
-#   }
-#   set {
-#     name = "persistence.storageClass"
-#     value = "linode-block-storage"
-#   }
-# }
 
