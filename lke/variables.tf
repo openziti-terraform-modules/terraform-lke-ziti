@@ -79,3 +79,7 @@ variable "ziti_controller_namespace" {
     description = "Ziti Controller namespace"
     default     = "ziti-controller"
 }
+
+variable "serial" {
+    default     = "00"
+}

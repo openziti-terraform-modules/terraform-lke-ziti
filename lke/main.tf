@@ -151,7 +151,7 @@ resource "helm_release" "ziti_controller" {
   depends_on = [helm_release.trust_manager]
   namespace = var.ziti_controller_namespace
   create_namespace = true
-  name = "ziti-controller-release02"
+  name = "ziti-controller-release${var.serial}"
   chart = "./charts/ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }

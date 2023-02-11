@@ -21,3 +21,7 @@ advertisedHost: ${ziti_domain_name}.${domain_name}
 persistence:
     storageClass: linode-block-storage
 
+clientApi:
+    service:
+        annotations:
+            kubernetes.io/ingress.class: nginx
