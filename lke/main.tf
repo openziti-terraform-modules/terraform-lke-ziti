@@ -75,7 +75,7 @@ module "cert_manager" {
 
   cluster_issuer_email                   = var.email
   cluster_issuer_name                    = var.cluster_issuer
-  cluster_issuer_private_key_secret_name = var.cluster_issuer+"-secret"
+  cluster_issuer_private_key_secret_name = "${var.cluster_issuer}-secret"
   additional_set = [{
     name = "enableCertificateOwnerRef"
     value = "true"
@@ -120,7 +120,7 @@ resource "linode_domain" "ziti_domain" {
 }
 
 resource "linode_domain_record" "ingress_domain_name_record" {
-    domain_id = linode_domain.master_domain.id
+    domain_id = linode_domain.ziti_domain.id
     name = var.ingress_domain_name
     record_type = "A"
     target = linode_nodebalancer.ingress_nginx_nodebalancer.ipv4
@@ -130,15 +130,16 @@ data "template_file" "ziti_console_values" {
   template = "${file("ziti-console-values.yaml.tpl")}"
   vars = {
     cluster_issuer = var.cluster_issuer
+    domain_name = var.domain_name
+    ingress_domain_name = var.ingress_domain_name
   }
 }
-
 
 resource "helm_release" "ziti-console" {
   depends_on = [helm_release.ingress-nginx]
   name = "ziti-console-release"
   chart = "./charts/ziti-console"
-  values = ["${file("")}"]
+  values = [data.template_file.ziti_console_values.rendered]
 }
 
 # resource "helm_release" "ziti-controller" {

@@ -24,3 +24,7 @@ resource "local_file" "kubeconfig" {
   filename     = "kube-config"
   content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
 }
+
+output "nodebalancer_id" {
+   value = linode_nodebalancer.ingress_nginx_nodebalancer.id
+}
