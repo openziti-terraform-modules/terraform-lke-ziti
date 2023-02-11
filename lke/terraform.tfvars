@@ -8,3 +8,4 @@ pools = [
   }
 ]
 email = "w@qrk.us"
+domain_name = "lke.bingnet.cloud"

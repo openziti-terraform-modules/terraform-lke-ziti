@@ -32,7 +32,7 @@ variable "pools" {
     default = [
         {
             type = "g6-standard-1"
-            count = 3
+            count = 2
         }
     ]
 }
@@ -41,3 +41,16 @@ variable "email" {
     description = "The email address cert-manager should submit during ACME request to Let's Encrypt for server certs."
 }
 
+variable "domain_name" {
+    description = "The domain name zone to maintain in Linode"
+}
+
+variable "ingress_domain_name" {
+    description = "The subdomain name to use for ingress_domain_name record"
+    default     = "ziti"
+}
+
+variable "cluster_issuer" {
+    description = "name of the cluster-wide certificate issuer for Let's Encrypt"
+    default     = "cert-manager-global"
+}

@@ -74,8 +74,8 @@ module "cert_manager" {
   source        = "terraform-iaac/cert-manager/kubernetes"
 
   cluster_issuer_email                   = var.email
-  cluster_issuer_name                    = "cert-manager-global"
-  cluster_issuer_private_key_secret_name = "cert-manager-global-secret"
+  cluster_issuer_name                    = var.cluster_issuer
+  cluster_issuer_private_key_secret_name = var.cluster_issuer+"-secret"
   additional_set = [{
     name = "enableCertificateOwnerRef"
     value = "true"
@@ -90,33 +90,70 @@ resource "helm_release" "trust_manager" {
   namespace  = module.cert_manager.namespace
 }
 
+resource "linode_nodebalancer" "ingress_nginx_nodebalancer" {
+    label = "ingress-nginx-nodebalancer"
+    region = "us-east"
+    client_conn_throttle = 20
+    # tags = ["foobar"]
+}
+
+data "template_file" "ingress_nginx_values" {
+  template = "${file("ingress-nginx-values.yaml.tpl")}"
+  vars = {
+    nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
+  }
+}
+
 resource "helm_release" "ingress-nginx" {
   depends_on   = [module.cert_manager]
   name       = "ingress-nginx-release"
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
+  values = [data.template_file.ingress_nginx_values.rendered]
 }
+
+resource "linode_domain" "ziti_domain" {
+    type = "master"
+    domain = var.domain_name
+    soa_email = var.email
+    tags = var.tags
+}
+
+resource "linode_domain_record" "ingress_domain_name_record" {
+    domain_id = linode_domain.master_domain.id
+    name = var.ingress_domain_name
+    record_type = "A"
+    target = linode_nodebalancer.ingress_nginx_nodebalancer.ipv4
+}
+
+data "template_file" "ziti_console_values" {
+  template = "${file("ziti-console-values.yaml.tpl")}"
+  vars = {
+    cluster_issuer = var.cluster_issuer
+  }
+}
+
 
 resource "helm_release" "ziti-console" {
   depends_on = [helm_release.ingress-nginx]
   name = "ziti-console-release"
   chart = "./charts/ziti-console"
-  values = ["${file("ziti-console-release-values.yaml")}"]
+  values = ["${file("")}"]
 }
 
-resource "helm_release" "ziti-controller" {
-  depends_on = [helm_release.trust_manager]
-  namespace = "ziti-controller"
-  create_namespace = true
-  name = "ziti-controller-release"
-  chart = "./charts/ziti-controller"
-  set {
-    name = "advertisedHost"
-    value = "ziti.lke.bingnet.cloud"
-  }
-  set {
-    name = "persistence.storageClass"
-    value = "linode-block-storage"
-  }
-}
+# resource "helm_release" "ziti-controller" {
+#   depends_on = [helm_release.trust_manager]
+#   namespace = "ziti-controller"
+#   create_namespace = true
+#   name = "ziti-controller-release"
+#   chart = "./charts/ziti-controller"
+#   set {
+#     name = "advertisedHost"
+#     value = "ziti.lke.bingnet.cloud"
+#   }
+#   set {
+#     name = "persistence.storageClass"
+#     value = "linode-block-storage"
+#   }
+# }
 
