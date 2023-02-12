@@ -92,7 +92,7 @@ resource "helm_release" "trust_manager" {
   depends_on   = [module.cert_manager, kubernetes_namespace.ziti_controller]
   chart      = "trust-manager"
   repository = "https://charts.jetstack.io"
-  name       = "trust-manager"
+  name       = "trust-manager-release"
   namespace  = module.cert_manager.namespace
   set {
     name = "app.trust.namespace"
@@ -108,15 +108,21 @@ resource "linode_nodebalancer" "ingress_nginx_nodebalancer" {
 }
 
 data "template_file" "ingress_nginx_values" {
-  template = "${file("ingress-nginx-values.yaml.tpl")}"
+  template = "${file("values-ingress-nginx.yaml.tpl")}"
   vars = {
-    nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
+    # nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
+      # service.beta.kubernetes.io/linode-loadbalancer-nodebalancer-id: ${nodebalancer_id}
+    client_port = var.ziti_client_port
+    client_svc = var.ziti_client_svc
+    controller_namespace = var.ziti_controller_namespace
   }
 }
 
 resource "helm_release" "ingress-nginx" {
   depends_on   = [module.cert_manager]
   name       = "ingress-nginx-release"
+  namespace = "ingress-nginx"
+  create_namespace = true
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
   values = [data.template_file.ingress_nginx_values.rendered]
@@ -137,7 +143,7 @@ resource "linode_domain_record" "ingress_domain_name_record" {
 }
 
 data "template_file" "ziti_controller_values" {
-  template = "${file("ziti-controller-values.yaml.tpl")}"
+  template = "${file("values-ziti-controller.yaml.tpl")}"
   vars = {
     ctrl_port = var.ziti_ctrl_port
     client_port = var.ziti_client_port
@@ -151,13 +157,13 @@ resource "helm_release" "ziti_controller" {
   depends_on = [helm_release.trust_manager]
   namespace = var.ziti_controller_namespace
   create_namespace = true
-  name = "ziti-controller-release${var.serial}"
+  name = "ziti-controller-release"
   chart = "./charts/ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }
 
 data "template_file" "ziti_console_values" {
-  template = "${file("ziti-console-values.yaml.tpl")}"
+  template = "${file("values-ziti-console.yaml.tpl")}"
   vars = {
     cluster_issuer = var.cluster_issuer
     domain_name = var.domain_name

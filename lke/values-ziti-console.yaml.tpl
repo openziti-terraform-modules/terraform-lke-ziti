@@ -1,6 +1,6 @@
 ingress:
+  ingressClassName: nginx
   annotations:
-    kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: ${cluster_issuer}
   hosts:
     - host: ${ziti_domain_name}.${domain_name}

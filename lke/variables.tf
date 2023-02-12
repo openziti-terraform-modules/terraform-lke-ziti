@@ -32,7 +32,7 @@ variable "pools" {
     default = [
         {
             type = "g6-standard-1"
-            count = 2
+            count = 3
         }
     ]
 }
@@ -70,6 +70,11 @@ variable "ziti_client_port" {
     default     = 1280
 }
 
+variable "ziti_client_svc" {
+    description = "Cluster service name of Ziti Edge client API"
+    default     = "ziti-controller-release-client"
+}
+
 variable "ziti_mgmt_port" {
     description = "Ziti Edge mgmt API port for ziti CLI and console"
     default     = 1281
@@ -78,8 +83,4 @@ variable "ziti_mgmt_port" {
 variable "ziti_controller_namespace" {
     description = "Ziti Controller namespace"
     default     = "ziti-controller"
-}
-
-variable "serial" {
-    default     = "00"
 }

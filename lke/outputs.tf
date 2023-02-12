@@ -28,3 +28,7 @@ resource "local_file" "kubeconfig" {
 output "nodebalancer_id" {
    value = linode_nodebalancer.ingress_nginx_nodebalancer.id
 }
+
+output "ingress_nginx_values" {
+   value = data.template_file.ingress_nginx_values.rendered
+}
