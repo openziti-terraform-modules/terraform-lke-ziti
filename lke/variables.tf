@@ -55,9 +55,18 @@ variable "ziti_domain_name" {
     default     = "ziti"  # wildcard DNS record resolves all names to the Nodebalancer
 }
 
-variable "cluster_issuer" {
+variable "ziti_console_release" {
+    default = "ziti-console-release"
+}
+variable "cluster_issuer_name" {
     description = "name of the cluster-wide certificate issuer for Let's Encrypt"
     default     = "cert-manager-global"
+}
+
+variable "cluster_issuer_server" {
+    description = "The ACME server URL"
+    type        = string
+    default     = "https://acme-v02.api.letsencrypt.org/directory"
 }
 
 variable "ziti_ctrl_port" {

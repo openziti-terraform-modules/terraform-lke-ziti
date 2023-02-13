@@ -7,5 +7,7 @@ pools = [
     count : 2
   }
 ]
-email = "w@qrk.us"
+email = "w2@qrk.us"
 domain_name = "lke.bingnet.cloud"
+# cluster_issuer_name = "cert-manager-staging"
+# cluster_issuer_server = "https://acme-staging-v02.api.letsencrypt.org/directory"

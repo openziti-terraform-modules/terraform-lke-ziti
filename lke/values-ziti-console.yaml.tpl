@@ -4,6 +4,11 @@ ingress:
     cert-manager.io/cluster-issuer: ${cluster_issuer}
   hosts:
     - host: ${ziti_domain_name}.${domain_name}
+  tls:
+  - hosts:
+    - ${ziti_domain_name}.${domain_name}
+    secretName: ${console_release}-tls-secret
+
 settings:
   edgeControllers:
     - name: Ziti Edge Mgmt API

@@ -74,8 +74,9 @@ module "cert_manager" {
   source        = "terraform-iaac/cert-manager/kubernetes"
 
   cluster_issuer_email                   = var.email
-  cluster_issuer_name                    = var.cluster_issuer
-  cluster_issuer_private_key_secret_name = "${var.cluster_issuer}-secret"
+  cluster_issuer_name                    = var.cluster_issuer_name
+  cluster_issuer_server                  = var.cluster_issuer_server
+  cluster_issuer_private_key_secret_name = "${var.cluster_issuer_name}-secret"
   additional_set = [{
     name = "enableCertificateOwnerRef"
     value = "true"
@@ -144,18 +145,19 @@ resource "helm_release" "ziti_controller" {
 data "template_file" "ziti_console_values" {
   template = "${file("values-ziti-console.yaml.tpl")}"
   vars = {
-    cluster_issuer = var.cluster_issuer
+    cluster_issuer = var.cluster_issuer_name
     domain_name = var.domain_name
     ziti_domain_name = var.ziti_domain_name
     controller_namespace = helm_release.ziti_controller.namespace
     controller_release = helm_release.ziti_controller.name
+    console_release = var.ziti_console_release
     edge_mgmt_port = var.ziti_mgmt_port
   }
 }
 
-resource "helm_release" "ziti-console" {
+resource "helm_release" "ziti_console" {
   depends_on = [helm_release.ingress-nginx]
-  name = "ziti-console-release"
+  name = var.ziti_console_release
   namespace = "ziti-console"
   create_namespace = true
   chart = "./charts/ziti-console"
