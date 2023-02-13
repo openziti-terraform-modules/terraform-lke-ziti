@@ -177,6 +177,8 @@ data "template_file" "ziti_console_values" {
 resource "helm_release" "ziti-console" {
   depends_on = [helm_release.ingress-nginx]
   name = "ziti-console-release"
+  namespace = "ziti-console"
+  create_namespace = true
   chart = "./charts/ziti-console"
   values = [data.template_file.ziti_console_values.rendered]
 }

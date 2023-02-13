@@ -25,3 +25,7 @@ clientApi:
     service:
         annotations:
             kubernetes.io/ingress.class: nginx
+
+managementApi:
+  service:
+    enabled: true  # separate API server for mgmt used by console and CLI
