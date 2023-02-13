@@ -100,13 +100,6 @@ resource "helm_release" "trust_manager" {
   }
 }
 
-resource "linode_nodebalancer" "ingress_nginx_nodebalancer" {
-    label = "ingress-nginx-nodebalancer"
-    region = "us-east"
-    client_conn_throttle = 20
-    # tags = ["foobar"]
-}
-
 data "template_file" "ingress_nginx_values" {
   template = "${file("values-ingress-nginx.yaml.tpl")}"
   vars = {
@@ -126,20 +119,6 @@ resource "helm_release" "ingress-nginx" {
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
   values = [data.template_file.ingress_nginx_values.rendered]
-}
-
-resource "linode_domain" "ziti_domain" {
-    type = "master"
-    domain = var.domain_name
-    soa_email = var.email
-    tags = var.tags
-}
-
-resource "linode_domain_record" "ingress_domain_name_record" {
-    domain_id = linode_domain.ziti_domain.id
-    name = var.ingress_domain_name
-    record_type = "A"
-    target = linode_nodebalancer.ingress_nginx_nodebalancer.ipv4
 }
 
 data "template_file" "ziti_controller_values" {
@@ -182,5 +161,3 @@ resource "helm_release" "ziti-console" {
   chart = "./charts/ziti-console"
   values = [data.template_file.ziti_console_values.rendered]
 }
-
-

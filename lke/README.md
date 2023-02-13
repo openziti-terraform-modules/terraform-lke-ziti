@@ -25,3 +25,10 @@ export KUBECONFIG=$(pwd)/lke-cluster-config.yaml
 ```
 
 Now `kubectl cluster-info` should work.
+
+```bash
+$ kubectl -n ziti-controller get secrets ziti-controller-release-admin-secret \
+    -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}' 
+admin-password: Gj63NwmZUJPwXsqbkzx8eQ6cdG8YBxP7
+admin-user: admin
+```

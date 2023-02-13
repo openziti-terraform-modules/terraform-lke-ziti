@@ -25,10 +25,22 @@ resource "local_file" "kubeconfig" {
   content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
 }
 
-output "nodebalancer_id" {
-   value = linode_nodebalancer.ingress_nginx_nodebalancer.id
-}
-
 output "ingress_nginx_values" {
    value = data.template_file.ingress_nginx_values.rendered
+}
+
+output "domain_name" {
+   value = var.domain_name
+}
+
+output "ingress_domain_name" {
+   value = var.ingress_domain_name
+}
+
+output "email" {
+   value = var.email
+}
+
+output "tags" {
+   value = var.tags
 }
