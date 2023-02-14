@@ -1,4 +1,3 @@
-label = "kentest-cluster"
 k8s_version = "1.25"
 region = "us-west"
 pools = [
@@ -7,7 +6,8 @@ pools = [
     count : 2
   }
 ]
-email = "w@qrk.us"
-domain_name = "lke.bingnet.cloud"
+
+# comment these two when you're sure you're getting a Let's Encrypt (STAGING) cert in the expected places
+#  this protects you from the hard rate limit
 cluster_issuer_name = "cert-manager-staging"
 cluster_issuer_server = "https://acme-staging-v02.api.letsencrypt.org/directory"
