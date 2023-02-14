@@ -2,9 +2,11 @@ ctrlPlane:
   service:
     enabled: true
   advertisedHost: ${ctrl_domain_name}.${domain_name}
+  advertisedPort: ${ctrl_port}
 
 clientApi:
   advertisedHost: ${client_domain_name}.${domain_name}
+  advertisedPort: ${client_port}
   service:
     enabled: true
     annotations:
@@ -20,6 +22,7 @@ clientApi:
 managementApi:
   service:
     enabled: true
+  advertisedPort: ${mgmt_port}
 
 persistence:
   storageClass: linode-block-storage  # append "-keep" to class name to preserve after release

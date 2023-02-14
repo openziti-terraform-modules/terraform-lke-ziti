@@ -84,10 +84,11 @@ variable "ziti_client_port" {
     default     = 443
 }
 
-variable "ziti_client_svc" {
-    description = "Cluster service name of Ziti Edge client API"
-    default     = "ziti-controller-release-client"
-}
+#  was used by ingress-nginx values to configure TCP ingress map, replaced by TLS passthrough ingress
+# variable "ziti_client_svc" {
+#     description = "Cluster service name of Ziti Edge client API"
+#     default     = "ziti-controller-release-client"
+# }
 
 variable "ziti_mgmt_port" {
     description = "Ziti Edge mgmt API port for ziti CLI and console"

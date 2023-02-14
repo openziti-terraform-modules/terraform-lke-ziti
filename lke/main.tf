@@ -106,7 +106,7 @@ data "template_file" "ingress_nginx_values" {
   vars = {
     # nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
     client_port = var.ziti_client_port
-    client_svc = var.ziti_client_svc
+    # client_svc = var.ziti_client_svc
     controller_namespace = var.ziti_controller_namespace
   }
 }
@@ -151,7 +151,7 @@ data "template_file" "ziti_console_values" {
     controller_namespace = helm_release.ziti_controller.namespace
     controller_release = helm_release.ziti_controller.name
     console_release = var.ziti_console_release
-    edge_mgmt_port = var.ziti_mgmt_port
+    mgmt_port = var.ziti_mgmt_port
   }
 }
 
