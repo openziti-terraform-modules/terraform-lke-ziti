@@ -33,16 +33,16 @@ data "terraform_remote_state" "lke_plan" {
   }
 }
 
-resource "linode_domain" "ziti_domain" {
+resource "linode_domain" "cluster_zone" {
     type = "master"
     domain = data.terraform_remote_state.lke_plan.outputs.domain_name
     soa_email = data.terraform_remote_state.lke_plan.outputs.email
     tags = data.terraform_remote_state.lke_plan.outputs.tags
 }
 
-resource "linode_domain_record" "ingress_domain_name_record" {
-    domain_id = linode_domain.ziti_domain.id
-    name = data.terraform_remote_state.lke_plan.outputs.ingress_domain_name
+resource "linode_domain_record" "wildcard_record" {
+    domain_id = linode_domain.cluster_zone.id
+    name = "*"
     record_type = "A"
     target = var.nodebalancer_ip
 }

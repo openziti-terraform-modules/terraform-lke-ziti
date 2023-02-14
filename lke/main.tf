@@ -127,7 +127,8 @@ data "template_file" "ziti_controller_values" {
     ctrl_port = var.ziti_ctrl_port
     client_port = var.ziti_client_port
     mgmt_port = var.ziti_mgmt_port
-    ziti_domain_name = var.ziti_domain_name
+    ctrl_domain_name = var.ctrl_domain_name
+    client_domain_name = var.client_domain_name
     domain_name = var.domain_name
   }
 }
@@ -146,7 +147,7 @@ data "template_file" "ziti_console_values" {
   vars = {
     cluster_issuer = var.cluster_issuer_name
     domain_name = var.domain_name
-    ziti_domain_name = var.ziti_domain_name
+    console_domain_name = var.console_domain_name
     controller_namespace = helm_release.ziti_controller.namespace
     controller_release = helm_release.ziti_controller.name
     console_release = var.ziti_console_release

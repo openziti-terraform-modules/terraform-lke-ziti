@@ -2,12 +2,10 @@ ingress:
   ingressClassName: nginx
   annotations:
     cert-manager.io/cluster-issuer: ${cluster_issuer}
-  hosts:
-    - host: ${ziti_domain_name}.${domain_name}
   tls:
-  - hosts:
-    - ${ziti_domain_name}.${domain_name}
-    secretName: ${console_release}-tls-secret
+    - hosts:
+      - ${console_domain_name}.${domain_name}
+      secretName: ${console_release}-tls-secret
 
 settings:
   edgeControllers:

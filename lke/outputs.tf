@@ -33,12 +33,12 @@ output "ziti_controller_values" {
    value = data.template_file.ziti_controller_values.rendered
 }
 
-output "domain_name" {
-   value = var.domain_name
+output "ziti_console_values" {
+   value = data.template_file.ziti_console_values.rendered
 }
 
-output "ingress_domain_name" {
-   value = var.ingress_domain_name
+output "domain_name" {
+   value = var.domain_name
 }
 
 output "email" {

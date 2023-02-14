@@ -45,14 +45,19 @@ variable "domain_name" {
     description = "The domain name zone to maintain in Linode"
 }
 
-variable "ingress_domain_name" {
-    description = "The subdomain name to use for ingress_domain_name record"
-    default     = "*"  # wildcard DNS record resolves all names to the Nodebalancer
-}
-
-variable "ziti_domain_name" {
+variable "console_domain_name" {
     description = "The subdomain name to use for Ziti console"
     default     = "ziti"  # wildcard DNS record resolves all names to the Nodebalancer
+}
+
+variable "ctrl_domain_name" {
+    description = "The subdomain name to use for Ziti router ctrl plane"
+    default     = "ctrl"  # wildcard DNS record resolves all names to the Nodebalancer
+}
+
+variable "client_domain_name" {
+    description = "The subdomain name to use for Ziti Edge client API"
+    default     = "edge"  # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "ziti_console_release" {
@@ -71,12 +76,12 @@ variable "cluster_issuer_server" {
 
 variable "ziti_ctrl_port" {
     description = "Ziti ctrl plane port for routers that's provided by the Ziti controller"
-    default     = 6262
+    default     = 443
 }
 
 variable "ziti_client_port" {
     description = "Ziti Edge client API port for SDK enrollment, auth, discovery"
-    default     = 1280
+    default     = 443
 }
 
 variable "ziti_client_svc" {
@@ -86,7 +91,7 @@ variable "ziti_client_svc" {
 
 variable "ziti_mgmt_port" {
     description = "Ziti Edge mgmt API port for ziti CLI and console"
-    default     = 1281
+    default     = 443
 }
 
 variable "ziti_controller_namespace" {
