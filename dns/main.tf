@@ -45,4 +45,5 @@ resource "linode_domain_record" "wildcard_record" {
     name = "*"
     record_type = "A"
     target = var.nodebalancer_ip
+    ttl_sec = var.wildcard_ttl_sec
 }
