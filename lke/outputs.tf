@@ -29,6 +29,10 @@ output "ingress_nginx_values" {
    value = data.template_file.ingress_nginx_values.rendered
 }
 
+output "ziti_controller_values" {
+   value = data.template_file.ziti_controller_values.rendered
+}
+
 output "domain_name" {
    value = var.domain_name
 }
@@ -43,4 +47,8 @@ output "email" {
 
 output "tags" {
    value = var.tags
+}
+
+output "ziti_controller_mgmt" {
+   value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.ziti_mgmt_port}"
 }

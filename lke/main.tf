@@ -102,10 +102,9 @@ resource "helm_release" "trust_manager" {
 }
 
 data "template_file" "ingress_nginx_values" {
-  template = "${file("values-ingress-nginx.yaml.tpl")}"
+  template = "${file("values-ingress-nginx.yaml")}"
   vars = {
     # nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
-      # service.beta.kubernetes.io/linode-loadbalancer-nodebalancer-id: ${nodebalancer_id}
     client_port = var.ziti_client_port
     client_svc = var.ziti_client_svc
     controller_namespace = var.ziti_controller_namespace
@@ -123,7 +122,7 @@ resource "helm_release" "ingress-nginx" {
 }
 
 data "template_file" "ziti_controller_values" {
-  template = "${file("values-ziti-controller.yaml.tpl")}"
+  template = "${file("values-ziti-controller.yaml")}"
   vars = {
     ctrl_port = var.ziti_ctrl_port
     client_port = var.ziti_client_port
@@ -143,7 +142,7 @@ resource "helm_release" "ziti_controller" {
 }
 
 data "template_file" "ziti_console_values" {
-  template = "${file("values-ziti-console.yaml.tpl")}"
+  template = "${file("values-ziti-console.yaml")}"
   vars = {
     cluster_issuer = var.cluster_issuer_name
     domain_name = var.domain_name
