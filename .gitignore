@@ -42,3 +42,4 @@ docs/_build
 
 # temp charts bind
 charts/
+lke/outputs-values-ziti-router.yaml

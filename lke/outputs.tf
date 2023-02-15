@@ -19,10 +19,11 @@ output "pool" {
    value = linode_lke_cluster.linode_lke.pool
 }
 
-resource "local_file" "kubeconfig" {
+resource "local_sensitive_file" "kubeconfig" {
   depends_on   = [linode_lke_cluster.linode_lke]
-  filename     = "kube-config"
+  filename     = "./kube-config"
   content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
+  file_permission = 0600
 }
 
 output "ingress_nginx_values" {
@@ -31,6 +32,16 @@ output "ingress_nginx_values" {
 
 output "ziti_controller_values" {
    value = data.template_file.ziti_controller_values.rendered
+}
+
+output "ziti_router_values" {
+   value = data.template_file.ziti_router_values.rendered
+}
+
+resource "local_file" "ziti_router_values" {
+  filename     = "./outputs-values-ziti-router.yaml"
+  content      = data.template_file.ziti_router_values.rendered
+  file_permission = 0600
 }
 
 output "ziti_console_values" {
@@ -50,5 +61,5 @@ output "tags" {
 }
 
 output "ziti_controller_mgmt" {
-   value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.ziti_mgmt_port}"
+   value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
 }

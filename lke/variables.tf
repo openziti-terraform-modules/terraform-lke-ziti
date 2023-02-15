@@ -61,7 +61,7 @@ variable "client_domain_name" {
 }
 
 variable "ziti_console_release" {
-    default = "ziti-console-release"
+    default = "ziti-console"
 }
 variable "cluster_issuer_name" {
     description = "name of the cluster-wide certificate issuer for Let's Encrypt"
@@ -74,23 +74,17 @@ variable "cluster_issuer_server" {
     default     = "https://acme-v02.api.letsencrypt.org/directory"
 }
 
-variable "ziti_ctrl_port" {
+variable "ctrl_port" {
     description = "Ziti ctrl plane port for routers that's provided by the Ziti controller"
     default     = 443
 }
 
-variable "ziti_client_port" {
+variable "client_port" {
     description = "Ziti Edge client API port for SDK enrollment, auth, discovery"
     default     = 443
 }
 
-#  was used by ingress-nginx values to configure TCP ingress map, replaced by TLS passthrough ingress
-# variable "ziti_client_svc" {
-#     description = "Cluster service name of Ziti Edge client API"
-#     default     = "ziti-controller-release-client"
-# }
-
-variable "ziti_mgmt_port" {
+variable "mgmt_port" {
     description = "Ziti Edge mgmt API port for ziti CLI and console"
     default     = 443
 }

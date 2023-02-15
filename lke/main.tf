@@ -93,7 +93,7 @@ resource "helm_release" "trust_manager" {
   depends_on   = [module.cert_manager, kubernetes_namespace.ziti_controller]
   chart      = "trust-manager"
   repository = "https://charts.jetstack.io"
-  name       = "trust-manager-release"
+  name       = "trust-manager"
   namespace  = module.cert_manager.namespace
   set {
     name = "app.trust.namespace"
@@ -104,16 +104,14 @@ resource "helm_release" "trust_manager" {
 data "template_file" "ingress_nginx_values" {
   template = "${file("values-ingress-nginx.yaml")}"
   vars = {
-    # nodebalancer_id = linode_nodebalancer.ingress_nginx_nodebalancer.id
-    client_port = var.ziti_client_port
-    # client_svc = var.ziti_client_svc
+    client_port = var.client_port
     controller_namespace = var.ziti_controller_namespace
   }
 }
 
-resource "helm_release" "ingress-nginx" {
+resource "helm_release" "ingress_nginx" {
   depends_on   = [module.cert_manager]
-  name       = "ingress-nginx-release"
+  name       = "ingress-nginx"
   namespace = "ingress-nginx"
   create_namespace = true
   repository = "https://kubernetes.github.io/ingress-nginx"
@@ -124,20 +122,30 @@ resource "helm_release" "ingress-nginx" {
 data "template_file" "ziti_controller_values" {
   template = "${file("values-ziti-controller.yaml")}"
   vars = {
-    ctrl_port = var.ziti_ctrl_port
-    client_port = var.ziti_client_port
-    mgmt_port = var.ziti_mgmt_port
+    ctrl_port = var.ctrl_port
+    client_port = var.client_port
+    mgmt_port = var.mgmt_port
     ctrl_domain_name = var.ctrl_domain_name
     client_domain_name = var.client_domain_name
     domain_name = var.domain_name
   }
 }
 
+data "template_file" "ziti_router_values" {
+  template = "${file("values-ziti-router.yaml")}"
+  vars = {
+    # cluster-internal endpoint for routers in any namespace
+    ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_controller_namespace}.svc:${var.ctrl_port}"
+    # public endpoint for routers outside the cluster
+    # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
+  }
+}
+
 resource "helm_release" "ziti_controller" {
-  depends_on = [helm_release.trust_manager]
+  depends_on = [helm_release.trust_manager, helm_release.ingress_nginx]
   namespace = var.ziti_controller_namespace
   create_namespace = true
-  name = "ziti-controller-release"
+  name = "ziti-controller"
   chart = "./charts/ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }
@@ -151,12 +159,12 @@ data "template_file" "ziti_console_values" {
     controller_namespace = helm_release.ziti_controller.namespace
     controller_release = helm_release.ziti_controller.name
     console_release = var.ziti_console_release
-    mgmt_port = var.ziti_mgmt_port
+    mgmt_port = var.mgmt_port
   }
 }
 
 resource "helm_release" "ziti_console" {
-  depends_on = [helm_release.ingress-nginx]
+  depends_on = [helm_release.ingress_nginx]
   name = var.ziti_console_release
   namespace = "ziti-console"
   create_namespace = true
