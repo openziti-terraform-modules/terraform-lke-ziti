@@ -48,6 +48,14 @@ output "ziti_console_values" {
    value = data.template_file.ziti_console_values.rendered
 }
 
+output "ctrl_domain_name" {
+  value = var.ctrl_domain_name
+}
+
+output "ctrl_port" {
+  value = var.ctrl_port
+}
+
 output "domain_name" {
    value = var.domain_name
 }
