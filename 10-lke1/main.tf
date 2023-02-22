@@ -1,11 +1,8 @@
 terraform {
-  cloud {
-    organization = "bingnet"  # customize to your tf cloud org name
-
-    workspaces {
-      name = "linode-lke-lab"  # unique remote state workspace for this tf plan
-    }
-  }
+  # Configure Terraform Cloud with env vars:
+  #   TF_CLOUD_ORGANIZATION
+  #   TF_WORKSPACE
+  cloud {}
 
   required_providers {
      local = {
@@ -104,8 +101,8 @@ resource "helm_release" "trust_manager" {
 data "template_file" "ingress_nginx_values" {
   template = "${file("values-ingress-nginx.yaml")}"
   vars = {
-    client_port = var.client_port
-    controller_namespace = var.ziti_controller_namespace
+    # client_port = var.client_port
+    # controller_namespace = var.ziti_controller_namespace
   }
 }
 
@@ -117,6 +114,31 @@ resource "helm_release" "ingress_nginx" {
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
   values = [data.template_file.ingress_nginx_values.rendered]
+}
+
+# discover the external IP of the Nodebalancer provisioned for the ingress-nginx
+# Service
+data "kubernetes_service" "ingress_nginx_controller" {
+  depends_on   = [helm_release.ingress_nginx]
+  metadata {
+    name = "ingress-nginx-controller"
+    namespace = "ingress-nginx"
+  }
+}
+
+resource "linode_domain" "cluster_zone" {
+    type = "master"
+    domain = var.domain_name
+    soa_email = var.email
+    tags = var.tags
+}
+
+resource "linode_domain_record" "wildcard_record" {
+    domain_id = linode_domain.cluster_zone.id
+    name = "*"
+    record_type = "A"
+    target = data.kubernetes_service.ingress_nginx_controller.status[0]["load_balancer"][0]["ingress"][0]["ip"]
+    ttl_sec = var.wildcard_ttl_sec
 }
 
 data "template_file" "ziti_controller_values" {

@@ -1,11 +1,8 @@
 terraform {
-  cloud {
-    organization = "bingnet"  # customize to your tf cloud org name
-
-    workspaces {
-      name = "linode-router-lab"  # unique remote state workspace for this tf plan
-    }
-  }
+  # Configure Terraform Cloud with env vars:
+  #   TF_CLOUD_ORGANIZATION
+  #   TF_WORKSPACE
+  cloud {}
 
   required_providers {
      local = {
@@ -18,6 +15,17 @@ terraform {
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "2.0.1"
+    }
+  }
+}
+
+data "terraform_remote_state" "lke_plan" {
+  backend = "remote"
+
+  config = {
+    organization = var.tf_org
+    workspaces = {
+      name = var.tf_workspace_zitik8s
     }
   }
 }
@@ -36,11 +44,11 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(yamldecode(base64decode(linode_lke_cluster.linode_lke.kubeconfig)).clusters[0].cluster.certificate-authority-data)
 }
 
-resource "helm_release" "ziti_controller" {
+resource "helm_release" "ziti_router" {
   depends_on = [helm_release.trust_manager, helm_release.ingress_nginx]
-  namespace = var.ziti_controller_namespace
+  namespace = var.ziti_router_namespace
   create_namespace = true
-  name = "ziti-controller"
-  chart = "./charts/ziti-controller"
-  values = [data.template_file.ziti_controller_values.rendered]
+  name = "ziti-router"
+  chart = "./charts/ziti-router"
+  values = [data.template_file.ziti_router_values.rendered]
 }
