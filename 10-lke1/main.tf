@@ -24,6 +24,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "2.0.1"
     }
+    # openziti = {
+    #   source  = "terraform.netfoundry.io/openziti/openapi"
+    #   version = ">= 3.0.0"
+    # }
   }
 }
 
@@ -137,7 +141,7 @@ resource "linode_domain_record" "wildcard_record" {
     domain_id = linode_domain.cluster_zone.id
     name = "*"
     record_type = "A"
-    target = data.kubernetes_service.ingress_nginx_controller.status[0]["load_balancer"][0]["ingress"][0]["ip"]
+    target = data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
     ttl_sec = var.wildcard_ttl_sec
 }
 
