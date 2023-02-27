@@ -25,7 +25,7 @@ Builds out a Linode Kubernetes Engine cluster with
 
 1. In `terraform.tfvars`, specify the Linode size and count, etc., e.g.,
 
-    ```json
+    ```hcl
     label = "my-ziti-cluster"
     email = "me@example.com"
     domain_name = "my-ziti-cluster.example.com"
