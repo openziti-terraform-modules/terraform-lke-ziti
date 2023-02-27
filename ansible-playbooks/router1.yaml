@@ -42,10 +42,9 @@
         command: >
           bash -c '
             zitiLogin &>/dev/null;
-            ziti edge create edge-router router1 \
-              --role-attributes default \
-              --tunneler-enabled \
-              --jwt-output-file /tmp/router1.jwt &>/dev/null
+            ziti edge create edge-router "router1" \
+              --role-attributes "public-routers" \
+              --tunneler-enabled
           '
     - name: Find Routers
       kubernetes.core.k8s_exec:
@@ -58,7 +57,7 @@
             ziti edge list edge-routers --output-json
           '
       register: edge_routers
-    - name: Get router1 JWT
+    - name: Get router1 JWT from Found Routers
       ansible.builtin.set_fact:
         router1_jwt: "{{ edge_routers.stdout | from_json | json_query('data[?name==`router1`].enrollmentJwt') }}"
     - name: Install Router Chart

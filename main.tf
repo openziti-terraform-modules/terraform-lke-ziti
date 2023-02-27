@@ -216,3 +216,18 @@ resource "null_resource" "router1_ansible_playbook" {
     }
   }
 }
+
+resource "null_resource" "service1_ansible_playbook" {
+  depends_on = [null_resource.router1_ansible_playbook]
+  provisioner "local-exec" {
+    command = <<-EOF
+      ansible-playbook -vvv ./ansible-playbooks/service1.yaml \
+        -e controller_namespace=${helm_release.ziti_controller.namespace} \
+        -e service1_namespace=${var.service1_namespace} \
+        -e service1_release=${var.service1_release}
+    EOF
+    environment = {
+      K8S_AUTH_KUBECONFIG = "../kube-config"
+    }
+  }
+}

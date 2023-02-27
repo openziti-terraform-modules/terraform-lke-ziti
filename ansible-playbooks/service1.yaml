@@ -1,0 +1,118 @@
+- name: Ensure service1 exists in Ziti
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Find Controller Pods By Namespace and Label
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - app.kubernetes.io/component=ziti-controller
+        namespace: "{{ controller_namespace }}"
+      register: controller_pods
+    - name: Fail Unless One Controller Pod
+      when: controller_pods.resources | length != 1
+      ansible.builtin.fail:
+        msg: "ERROR: expected exactly one controller pod"
+    - name: Debug Get Pods
+      ansible.builtin.debug:
+        var: controller_pods.resources.0.metadata.name
+    - name: Find Services
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: |
+          bash -c 'zitiLogin &>/dev/null; ziti edge list services --output-json'
+      register: services
+    - name: Get service1 Matches
+      ansible.builtin.set_fact:
+        service1_matches: "{{ services.stdout | from_json | json_query('data[?name==`service1`]') }}"
+    - name: Debug Service Matches
+      ansible.builtin.debug:
+        var: service1_matches
+    - name: Ensure service1 Script Exists in Admin Container
+      kubernetes.core.k8s_cp:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        remote_path: /tmp/service1.bash
+        state: to_pod
+        content: |
+          set -o errexit
+          set -o nounset
+          set -o pipefail
+          set -o xtrace
+
+          zitiLogin;
+
+          ziti edge create identity device edge-client1 \
+              --role-attributes webhook-clients;
+
+          ziti edge create identity device webhook-server1 \
+              --role-attributes webhook-servers;
+
+          ziti edge create config webhook-intercept-config intercept.v1 \
+              '{"protocols":["tcp"],"addresses":["webhook.ziti"], "portRanges":[{"low":80, "high":80}]}';
+
+          ziti edge create config webhook-host-config host.v1 \
+              '{"protocol":"tcp", "address":"httpbin","port":8080}';
+
+          ziti edge create service webhook-service1 \
+            --configs webhook-intercept-config,webhook-host-config;
+
+          ziti edge create service-policy webhook-bind-policy Bind \
+              --service-roles '@webhook-service1' --identity-roles '#webhook-servers';
+
+          ziti edge create service-policy webhook-dial-policy Dial \
+              --service-roles '@webhook-service1' --identity-roles '#webhook-clients';
+
+          ziti edge create edge-router-policy public-routers \
+              --edge-router-roles '#public-routers' --identity-roles '#all';
+
+          ziti edge create service-edge-router-policy public-routers \
+              --edge-router-roles '#public-routers' --service-roles '#all';
+    - name: Create service1 Unless Exists
+      when: service1_matches | length < 1
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: bash /tmp/service1.bash
+    - name: Find Identities
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: |
+          bash -c 'zitiLogin &>/dev/null; ziti edge list identities --output-json'
+      register: identities
+    - name: Get webhook-client1 JWT
+      ansible.builtin.set_fact:
+        webhook_client1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`webhook-client1`].enrollmentJwt') }}"
+    - name: Save client JWT
+      ansible.builtin.copy:
+        content: "{{ webhook_client1_jwt }}"
+        dest: /tmp/webhook-client1.jwt
+        mode: "0600"
+    - name: Get webhook-server1 JWT
+      ansible.builtin.set_fact:
+        webhook_server1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`webhook-server1`].enrollmentJwt') }}"
+    - name: Save server JWT
+      ansible.builtin.copy:
+        content: "{{ webhook_server1_jwt }}"
+        dest: /tmp/webhook-server1.jwt
+        mode: "0600"
+    - name: Enroll the server1 identity
+      ansible.builtin.command:
+        cmd: ziti edge enroll /tmp/webhook-server1.jwt
+        creates: /tmp/webhook-server1.json
+    - name: Install Webhook Server Chart
+      kubernetes.core.helm:
+        create_namespace: true
+        release_namespace: "{{ service1_namespace }}"
+        release_name: "{{ service1_release }}"
+        chart_repo_url: https://openziti.github.io/helm-charts
+        chart_ref: httpbin
+        values:
+          zitiServiceName: "webhook-service1"
+          zitiIdentity: /tmp/webhook-server1.json
