@@ -1,4 +1,4 @@
-- name: Ensure router1 exists in mgmt API
+- name: Ensure router1 exists in Ziti
   hosts: localhost
   connection: local
   tasks:
@@ -42,9 +42,9 @@
         command: >
           bash -c '
             zitiLogin &>/dev/null;
-            ziti edge create edge-router router1
-              --role-attributes default
-              --tunneler-enabled
+            ziti edge create edge-router router1 \
+              --role-attributes default \
+              --tunneler-enabled \
               --jwt-output-file /tmp/router1.jwt &>/dev/null
           '
     - name: Find Routers
