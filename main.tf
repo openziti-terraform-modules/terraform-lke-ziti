@@ -207,8 +207,8 @@ resource "null_resource" "router1_ansible_playbook" {
   provisioner "local-exec" {
     command = <<-EOF
       ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
-        -e controller_namespace=${helm_release.ziti_controller.namespace}
-        -e router1_namespace=${var.router1_namespace}
+        -e controller_namespace=${helm_release.ziti_controller.namespace} \
+        -e router1_namespace=${var.router1_namespace} \
         -e router1_release=${var.router1_release}
     EOF
     environment = {
