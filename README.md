@@ -2,17 +2,32 @@
 
 Builds out a Linode Kubernetes Engine cluster with 
 
-* ingress-nginx w/ Nodebalancer
-* cert-manager w/ Let's Encrypt issuer
-* trust-manager
-* ziti-controller
-* ziti-console
-* ziti-router
-* httpbin demo API
+* `ingress-nginx` w/ Nodebalancer
+* `cert-manager` w/ Let's Encrypt issuer
+* `trust-manager`
+* `ziti-controller`
+* `ziti-console`
+* `ziti-router`
+* `httpbin` demo API
+
+## Requires
+
+* `terraform`
+* `kubectl`
+* `helm`
+* `ansible`
+* `ziti`
+
+## Recommended
+
+* Ziti tunneler, e.g., Desktop Edge, for testing Ziti services
+* `k9s`
+* `curl`
+* `jq`
 
 ## Init
 
-1. Delegate a DNS zone to Linode's NSs, e.g. ns1.linode.com. For example, to delegate my-ziti-cluster.example.com to Linode you need to create NS records in example.com named "my-ziti-cluster". You can verify it's working by checking the NS records with `dig` or [Google DNS Toolbox](https://toolbox.googleapps.com/apps/dig/#NS/) (record type `NS`).
+1. Delegate a DNS zone to Linode's NSs so Terraform can manage the global zone. For example, to delegate my-ziti-cluster.example.com to Linode you need to create NS records in example.com named "my-ziti-cluster". You can verify it's working by checking the NS records with `dig` or [Google DNS Toolbox](https://toolbox.googleapps.com/apps/dig/#NS/) (record type `NS`).
 
     ```bash
     $ dig +noall +answer my-ziti-cluster.example.com. NS
@@ -108,3 +123,22 @@ Builds out a Linode Kubernetes Engine cluster with
     cluster_issuer_server = "https://acme-v02.api.letsencrypt.org/directory"
     ```
 
+1. Run `ziti` CLI remotely in the admin container. Change the command to `bash` to login interactively. Then run `zitiLogin`.
+
+    ```bash
+    kubectl --namespace ziti-controller exec \
+        --stdin --tty \
+        ziti-controller-6c79575bb4-lh9nt \
+        --container ziti-controller-admin -- \
+            bash -c '
+                zitiLogin &>/dev/null; 
+                ziti edge list ers --output-json' \
+    | jq --slurp 
+    ```
+
+1. Add the demo client identity to Ziti Desktop Edge. The JWT is saved in `/tmp/edge-client1.jwt`.
+1. Test the demo API.
+
+    ```bash
+    curl -sSf -XPOST -d ziti=awesome http://webhook.ziti/post | jq .data
+    ```
