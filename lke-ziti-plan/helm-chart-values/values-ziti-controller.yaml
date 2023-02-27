@@ -35,3 +35,12 @@ managementApi:
 
 persistence:
   storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
+
+# don't install sub-charts because they're already installed by Terraform with
+# special configuration for this plan
+cert-manager:
+  enabled: false
+trust-manager:
+  enabled: false
+ingress-nginx:
+  enabled: false

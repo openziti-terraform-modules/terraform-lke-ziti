@@ -1,0 +1,32 @@
+- name: Ensure router1 exists in mgmt API
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Find Controller Pods By Namespace and Label
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - app.kubernetes.io/component=ziti-controller
+        namespace: "{{ controller_namespace }}"
+      register: controller_pods
+    - ansible.builtin.fail:
+        msg: "ERROR: expected exactly one controller pod"
+      when: controller_pods.resources|length != 1
+    - ansible.builtin.debug:
+        var: controller_pods.resources.0.metadata.name
+    - name: Get Routers by Running Ziti CLI in Admin Container
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: > 
+          bash -c '
+            zitiLogin &>/dev/null;
+            ziti edge list edge-routers --output-json
+          '
+      register: edge_routers_output
+    - ansible.builtin.set_fact:
+        edge_routers: "{{ edge_routers_output.stdout|from_json|json_query('data') }}"
+    - ansible.builtin.debug:
+        var: edge_routers
+

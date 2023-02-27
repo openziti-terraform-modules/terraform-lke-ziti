@@ -103,11 +103,11 @@ resource "helm_release" "trust_manager" {
 }
 
 data "template_file" "ingress_nginx_values" {
-  template = "${file("values-ingress-nginx.yaml")}"
-  vars = {
-    # client_port = var.client_port
-    # controller_namespace = var.ziti_controller_namespace
-  }
+  template = "${file("helm-chart-values/values-ingress-nginx.yaml")}"
+  # vars = {
+  #   # client_port = var.client_port
+  #   # controller_namespace = var.ziti_controller_namespace
+  # }
 }
 
 resource "helm_release" "ingress_nginx" {
@@ -146,7 +146,7 @@ resource "linode_domain_record" "wildcard_record" {
 }
 
 data "template_file" "ziti_controller_values" {
-  template = "${file("values-ziti-controller.yaml")}"
+  template = "${file("helm-chart-values/values-ziti-controller.yaml")}"
   vars = {
     ctrl_port = var.ctrl_port
     client_port = var.client_port
@@ -158,7 +158,7 @@ data "template_file" "ziti_controller_values" {
 }
 
 data "template_file" "ziti_router_values" {
-  template = "${file("values-ziti-router.yaml")}"
+  template = "${file("helm-chart-values/values-ziti-router.yaml")}"
   vars = {
     # cluster-internal endpoint for routers in any namespace
     ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_controller_namespace}.svc:${var.ctrl_port}"
@@ -172,12 +172,13 @@ resource "helm_release" "ziti_controller" {
   namespace = var.ziti_controller_namespace
   create_namespace = true
   name = "ziti-controller"
-  chart = "./charts/ziti-controller"
+  # repository = "https://openziti.github.io/helm-charts"
+  chart = "/home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }
 
 data "template_file" "ziti_console_values" {
-  template = "${file("values-ziti-console.yaml")}"
+  template = "${file("helm-chart-values/values-ziti-console.yaml")}"
   vars = {
     cluster_issuer = var.cluster_issuer_name
     domain_name = var.domain_name
@@ -194,6 +195,20 @@ resource "helm_release" "ziti_console" {
   name = var.ziti_console_release
   namespace = "ziti-console"
   create_namespace = true
-  chart = "./charts/ziti-console"
+  repository = "https://openziti.github.io/helm-charts"
+  chart = "ziti-console"
   values = [data.template_file.ziti_console_values.rendered]
+}
+
+resource "null_resource" "router1_ansible_playbook" {
+  depends_on = [helm_release.ziti_controller]
+  provisioner "local-exec" {
+    command = <<-EOT
+      ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
+        -e controller_namespace=${helm_release.ziti_controller.namespace}
+    EOT
+    environment = {
+      K8S_AUTH_KUBECONFIG = "../kube-config"
+     }
+  }
 }

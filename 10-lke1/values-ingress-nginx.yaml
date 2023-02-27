@@ -1,8 +1,0 @@
-controller:
-  service:
-    annotations:
-      # service.beta.kubernetes.io/linode-loadbalancer-nodebalancer-id: $\{nodebalancer_id}
-  extraArgs:
-    enable-ssl-passthrough: "true"
-# tcp:
-#   $\{client_port}: "$\{controller_namespace}/$\{client_svc}:$\{client_port}"

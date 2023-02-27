@@ -43,7 +43,7 @@ output "ziti_router_values" {
 }
 
 resource "local_file" "ziti_router_values" {
-  filename     = "./outputs-values-ziti-router.yaml"
+  filename     = "/tmp/outputs-values-ziti-router.yaml"
   content      = data.template_file.ziti_router_values.rendered
   file_permission = 0600
 }

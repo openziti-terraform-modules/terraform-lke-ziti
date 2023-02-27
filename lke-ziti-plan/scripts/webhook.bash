@@ -1,5 +1,5 @@
-ziti edge create identity device webhook-sender1 \
-    --jwt-output-file /tmp/webhook-sender1.jwt --role-attributes webhook-senders
+ziti edge create identity device webhook-client1 \
+    --jwt-output-file /tmp/webhook-client1.jwt --role-attributes webhook-clients
 
 ziti edge create identity device webhook-server1 \
     --jwt-output-file /tmp/webhook-server1.jwt --role-attributes webhook-servers
@@ -16,15 +16,14 @@ ziti edge create service-policy webhook-bind-policy Bind \
     --service-roles '@webhook-service1' --identity-roles '#webhook-servers'
 
 ziti edge create service-policy webhook-dial-policy Dial \
-    --service-roles '@webhook-service1' --identity-roles '#webhook-senders'
+    --service-roles '@webhook-service1' --identity-roles '#webhook-clients'
 
-ziti edge create edge-router-policy blanket \
-    --edge-router-roles '#blanket' --identity-roles '#all'
+ziti edge create edge-router-policy default \
+    --edge-router-roles '#default' --identity-roles '#all'
 
-ziti edge create service-edge-router-policy blanket \
-    --edge-router-roles '#blanket' --service-roles '#all'
+ziti edge create service-edge-router-policy default \
+    --edge-router-roles '#default' --service-roles '#all'
 
 ziti edge enroll /tmp/webhook-server1.jwt
 
-docker run --rm --name webhook-server1 -v /tmp:/mnt    -e ENABLE_ZITI=true    -e ZITI_IDENTITY=/mnt/webhook-server1.json    -e ZITI_SERVICE_NAME="webhook-service1" openziti/go-httpbin
 
