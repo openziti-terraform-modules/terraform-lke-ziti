@@ -2,6 +2,7 @@ persistence:
   storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
 
 edge:
+  advertisedHost: ${router1_edge}
   advertisedPort: 443
   service:
     enabled: true
@@ -16,6 +17,7 @@ edge:
 
 linkListeners:
   transport:
+    advertisedHost: ${router1_transport}
     advertisedPort: 443
     service:
       enabled: true

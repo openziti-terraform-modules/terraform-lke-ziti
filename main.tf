@@ -157,13 +157,15 @@ data "template_file" "ziti_controller_values" {
   }
 }
 
-data "template_file" "ziti_router_values" {
-  template = "${file("helm-chart-values/values-ziti-router.yaml")}"
+data "template_file" "ziti_router1_values" {
+  template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
   vars = {
     # cluster-internal endpoint for routers in any namespace
     ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_controller_namespace}.svc:${var.ctrl_port}"
     # public endpoint for routers outside the cluster
     # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
+    router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
+    router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
   }
 }
 
@@ -203,12 +205,14 @@ resource "helm_release" "ziti_console" {
 resource "null_resource" "router1_ansible_playbook" {
   depends_on = [helm_release.ziti_controller]
   provisioner "local-exec" {
-    command = <<-EOT
+    command = <<-EOF
       ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
         -e controller_namespace=${helm_release.ziti_controller.namespace}
-    EOT
+        -e router1_namespace=${var.router1_namespace}
+        -e router1_release=${var.router1_release}
+    EOF
     environment = {
       K8S_AUTH_KUBECONFIG = "../kube-config"
-     }
+    }
   }
 }

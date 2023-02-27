@@ -1,0 +1,57 @@
+- name: Ensure router1 exists in mgmt API
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Find Controller Pods By Namespace and Label
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - app.kubernetes.io/component=ziti-controller
+        namespace: "{{ controller_namespace }}"
+      register: controller_pods
+    - ansible.builtin.fail:
+        msg: "ERROR: expected exactly one controller pod"
+      when: controller_pods.resources|length != 1
+    - ansible.builtin.debug:
+        var: controller_pods.resources.0.metadata.name
+    - name: Find Routers
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: > 
+          bash -c '
+            zitiLogin &>/dev/null;
+            ziti edge list edge-routers --output-json
+          '
+      register: edge_routers
+    - ansible.builtin.set_fact:
+        router1_matches: "{{ edge_routers.stdout|from_json|json_query('data[?name==`router1`]') }}"
+    - ansible.builtin.debug:
+        var: router1_matches
+    - name: Create router1 Unless Exists
+      kubernetes.core.k8s_exec:
+        namespace: "{{ controller_namespace }}"
+        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        container: ziti-controller-admin
+        command: > 
+          bash -c '
+            zitiLogin &>/dev/null;
+            ziti edge create edge-router router1
+              --role-attributes default
+              --tunneler-enabled
+              --jwt-output-file /tmp/router1.jwt &>/dev/null
+            cat /tmp/router1.jwt
+          '
+      when: router1_matches|length < 1
+      register: router1_jwt
+    - kubernetes.core.helm:
+        create_namespace: true
+        release_namespace: "{{ router1_namespace }}"
+        release_name: "{{ router_release }}"
+        chart_repo_url: https://openziti.github.io/helm-charts
+        chart_ref: ziti-router
+        values:
+          enrollmentJwt: "{{ router1_jwt.stdout }}"
+        values_files:
+          - /tmp/values-ziti-router1.yaml

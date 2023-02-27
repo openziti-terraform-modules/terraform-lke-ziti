@@ -38,13 +38,13 @@ resource "local_sensitive_file" "kubeconfig" {
 #    value = data.template_file.ziti_console_values.rendered
 # }
 
-output "ziti_router_values" {
-   value = data.template_file.ziti_router_values.rendered
-}
+# output "ziti_router1_values" {
+#   value = data.template_file.ziti_router1_values.rendered
+# }
 
-resource "local_file" "ziti_router_values" {
-  filename     = "/tmp/outputs-values-ziti-router.yaml"
-  content      = data.template_file.ziti_router_values.rendered
+resource "local_file" "ziti_router1_values" {
+  filename     = "/tmp/values-ziti-router1.yaml"
+  content      = data.template_file.ziti_router1_values.rendered
   file_permission = 0600
 }
 
