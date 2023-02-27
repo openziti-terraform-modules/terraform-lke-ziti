@@ -18,7 +18,7 @@ Builds out a Linode Kubernetes Engine cluster with
 * `ansible`
 * `ziti`
 
-## Recommended
+## Recommends
 
 * Ziti tunneler, e.g., Desktop Edge, for testing Ziti services
 * `k9s`
