@@ -68,9 +68,8 @@
         create_namespace: true
         release_namespace: "{{ router1_namespace }}"
         release_name: "{{ router1_release }}"
-        # chart_repo_url: https://openziti.github.io/helm-charts
-        # chart_ref: ziti-router
-        chart_ref: /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-router
+        chart_repo_url: https://openziti.github.io/helm-charts
+        chart_ref: ziti-router
         values:
           enrollmentJwt: "{{ router1_jwt.0 | default(' ') }}"
         values_files:

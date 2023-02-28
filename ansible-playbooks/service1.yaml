@@ -114,9 +114,8 @@
         create_namespace: true
         release_namespace: "{{ service1_namespace }}"
         release_name: "{{ service1_release }}"
-        # chart_repo_url: https://openziti.github.io/helm-charts
+        chart_repo_url: https://openziti.github.io/helm-charts
         chart_ref: httpbin
-        chart_ref: /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/httpbin
         values:
           zitiServiceName: "webhook-service1"
           zitiIdentity: /tmp/webhook-server1.json
