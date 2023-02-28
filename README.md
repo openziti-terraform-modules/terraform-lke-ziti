@@ -120,7 +120,7 @@ Builds out a Linode Kubernetes Engine cluster with
     issuer=C = US, O = (STAGING) Let's Encrypt, CN = (STAGING) Artificial Apricot R3
     ```
 
-1. Optionally, switch to Let's Encrypt Prod issuer for a *real* certificate. Uncomment these lines in `terraform.tfvars` and run `terraform apply`.
+1. Optionally, switch to Let's Encrypt Prod issuer for a *real* certificate. Uncomment these lines in `terraform.tfvars` and run `terraform apply`. The cert rate limit is real, hence Staging.
 
     ```bash
     cluster_issuer_name = "cert-manager-production"
