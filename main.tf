@@ -246,3 +246,15 @@ resource "null_resource" "k8sapiservice_ansible_playbook" {
     }
   }
 }
+
+resource "null_resource" "kubeconfig_ansible_playbook" {
+  depends_on = [null_resource.k8sapiservice_ansible_playbook]
+  provisioner "local-exec" {
+    command = <<-EOF
+      ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+    EOF
+    environment = {
+      K8S_AUTH_KUBECONFIG = "../kube-config"
+    }
+  }
+}

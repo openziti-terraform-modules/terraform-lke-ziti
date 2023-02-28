@@ -13,13 +13,16 @@
       when: controller_pods.resources | length != 1
       ansible.builtin.fail:
         msg: "ERROR: expected exactly one controller pod"
-    - name: Debug Get Pods
+    - name: Get Controller Pod
+      ansible.builtin.set_fact:
+        controller_pod: "{{ controller_pods.resources | first }}"
+    - name: Debug Get Pod
       ansible.builtin.debug:
-        var: controller_pods.resources.0.metadata.name
+        var: controller_pod.metadata.name
     - name: Find Services
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: |
           bash -c 'zitiLogin &>/dev/null; ziti edge list services --output-json'
@@ -33,7 +36,7 @@
     - name: Ensure service1 Script Exists in Admin Container
       kubernetes.core.k8s_cp:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         remote_path: /tmp/service1.bash
         state: to_pod
@@ -75,13 +78,13 @@
       when: service1_matches | length < 1
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: bash /tmp/service1.bash
     - name: Find Identities
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: |
           bash -c 'zitiLogin &>/dev/null; ziti edge list identities --output-json'
@@ -111,8 +114,9 @@
         create_namespace: true
         release_namespace: "{{ service1_namespace }}"
         release_name: "{{ service1_release }}"
-        chart_repo_url: https://openziti.github.io/helm-charts
+        # chart_repo_url: https://openziti.github.io/helm-charts
         chart_ref: httpbin
+        chart_ref: /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/httpbin
         values:
           zitiServiceName: "webhook-service1"
           zitiIdentity: /tmp/webhook-server1.json

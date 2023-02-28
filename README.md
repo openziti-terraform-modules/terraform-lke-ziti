@@ -149,6 +149,21 @@ Builds out a Linode Kubernetes Engine cluster with
     curl -sSf -XPOST -d ziti=awesome http://webhook.ziti/post | jq .data
     ```
 
+## Use the Kubernetes API over Ziti
+
+Terraform modified your Kubeconfig to have a new Ziti context named like "ziti-lke12345-ctx" pointing to the Ziti service for the Kubernetes apiserver instead of the public Linode service. Find the name and select it with `kubectl`.
+
+```bash
+$ kubectl config get-contexts
+CURRENT   NAME                CLUSTER             AUTHINFO         NAMESPACE
+*         lke95021-ctx        lke95021            lke95021-admin   default
+          ziti-lke95021-ctx   ziti-lke95021-ctx   lke95021-admin   
+
+$ kubectl --context ziti-lke12345-ctx cluster-info
+Kubernetes control plane is running at https://kubernetes.default.svc
+KubeDNS is running at https://kubernetes.default.svc/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+```
+
 ## Start Over with Fresh Ziti
 
 Remember to forget your identity. :wink: The edge-client1 in your tunneler that is. The console is stateless other than the remembered mgmt API URL.

@@ -13,13 +13,16 @@
       when: controller_pods.resources | length != 1
       ansible.builtin.fail:
         msg: "ERROR: expected exactly one controller pod"
-    - name: Debug Get Pods
+    - name: Get Controller Pod
+      ansible.builtin.set_fact:
+        controller_pod: "{{ controller_pods.resources | first }}"
+    - name: Debug Get Pod
       ansible.builtin.debug:
-        var: controller_pods.resources.0.metadata.name
+        var: controller_pod.metadata.name
     - name: Find Routers
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: >
           bash -c '
@@ -37,7 +40,7 @@
       when: router1_matches | length < 1
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: >
           bash -c '
@@ -49,7 +52,7 @@
     - name: Find Routers
       kubernetes.core.k8s_exec:
         namespace: "{{ controller_namespace }}"
-        pod: "{{ controller_pods.resources.0.metadata.name }}"
+        pod: "{{ controller_pod.metadata.name }}"
         container: ziti-controller-admin
         command: >
           bash -c '
@@ -65,8 +68,9 @@
         create_namespace: true
         release_namespace: "{{ router1_namespace }}"
         release_name: "{{ router1_release }}"
-        chart_repo_url: https://openziti.github.io/helm-charts
-        chart_ref: ziti-router
+        # chart_repo_url: https://openziti.github.io/helm-charts
+        # chart_ref: ziti-router
+        chart_ref: /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-router
         values:
           enrollmentJwt: "{{ router1_jwt.0 | default(' ') }}"
         values_files:
