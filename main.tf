@@ -174,8 +174,9 @@ resource "helm_release" "ziti_controller" {
   namespace = var.ziti_controller_namespace
   create_namespace = true
   name = "ziti-controller"
-  repository = "https://openziti.github.io/helm-charts"
-  chart = "ziti-controller"
+  # repository = "https://openziti.github.io/helm-charts"
+  # chart = "ziti-controller"
+  chart = "/home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }
 
@@ -197,8 +198,9 @@ resource "helm_release" "ziti_console" {
   name = var.ziti_console_release
   namespace = "ziti-console"
   create_namespace = true
-  repository = "https://openziti.github.io/helm-charts"
-  chart = "ziti-console"
+  # repository = "https://openziti.github.io/helm-charts"
+  chart = "https://github.com/openziti/helm-charts/releases/download/ziti-console-0.2.3/ziti-console-0.2.3.tgz"
+  # chart = "ziti-console"
   values = [data.template_file.ziti_console_values.rendered]
 }
 
@@ -225,6 +227,19 @@ resource "null_resource" "service1_ansible_playbook" {
         -e controller_namespace=${helm_release.ziti_controller.namespace} \
         -e service1_namespace=${var.service1_namespace} \
         -e service1_release=${var.service1_release}
+    EOF
+    environment = {
+      K8S_AUTH_KUBECONFIG = "../kube-config"
+    }
+  }
+}
+
+resource "null_resource" "k8sapiservice_ansible_playbook" {
+  depends_on = [null_resource.service1_ansible_playbook]
+  provisioner "local-exec" {
+    command = <<-EOF
+      ansible-playbook -vvv ./ansible-playbooks/k8sapiservice.yaml \
+        -e controller_namespace=${helm_release.ziti_controller.namespace}
     EOF
     environment = {
       K8S_AUTH_KUBECONFIG = "../kube-config"

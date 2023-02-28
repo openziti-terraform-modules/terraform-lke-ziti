@@ -42,8 +42,8 @@
         command: >
           bash -c '
             zitiLogin &>/dev/null;
-            ziti edge create edge-router "router1" \
-              --role-attributes "public-routers" \
+            ziti edge create edge-router router1 \
+              --role-attributes public-routers \
               --tunneler-enabled
           '
     - name: Find Routers

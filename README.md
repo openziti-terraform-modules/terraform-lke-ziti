@@ -88,25 +88,25 @@ Builds out a Linode Kubernetes Engine cluster with
 1. Test cluster connection.
 
     ```bash
+    # KUBECONFIG=./kube-config
     kubectl cluster-info
     ```
 
 1. Print the Ziti login credential.
 
     ```bash
-    kubectl -n ziti-controller get secrets ziti-controller-secret \
+    kubectl -n ziti-controller get secrets ziti-controller-admin-secret \
         -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}' 
     ```
 
     ```bash
-    $ kubectl -n ziti-controller get secrets ziti-controller-release-admin-secret \
+    $ kubectl -n ziti-controller get secrets ziti-controller-admin-secret \
         -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}' 
     admin-password: Gj63NwmZUJPwXsqbkzx8eQ6cdG8YBxP7
     admin-user: admin
     ```
 
-1. Visit the console: https://ziti.my-ziti-cluster.example.com
-
+1. Visit the console: https://console.my-ziti-cluster.example.com
 1. Check the certificate. If it's from "(STAGING) Let's Encrypt" then everything is working. If not, it's probably DNS.
 
     ```bash
@@ -148,3 +148,17 @@ Builds out a Linode Kubernetes Engine cluster with
     ```bash
     curl -sSf -XPOST -d ziti=awesome http://webhook.ziti/post | jq .data
     ```
+
+## Start Over with Fresh Ziti
+
+Remember to forget your identity. :wink: The edge-client1 in your tunneler that is. The console is stateless other than the remembered mgmt API URL.
+
+```bash
+rm /tmp/webhook-server1.json  # forget the demo API server's identity too
+terraform taint helm_release.ziti_controller  # replace controller release
+terraform taint null_resource.service1_ansible_playbook  # re-run playbooks
+terraform taint null_resource.router1_ansible_playbook
+helm -n ziti-router1 uninstall ziti-router1  # uninstall releases installed by ansible
+helm -n ziti-service1 uninstall webhook-server1
+terraform apply
+```

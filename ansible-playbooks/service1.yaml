@@ -46,7 +46,7 @@
           zitiLogin;
 
           ziti edge create identity device edge-client1 \
-              --role-attributes webhook-clients;
+              --role-attributes webhook-clients,k8sapi-clients;
 
           ziti edge create identity device webhook-server1 \
               --role-attributes webhook-servers;
@@ -86,20 +86,20 @@
         command: |
           bash -c 'zitiLogin &>/dev/null; ziti edge list identities --output-json'
       register: identities
-    - name: Get webhook-client1 JWT
+    - name: Get edge-client1 JWT
       ansible.builtin.set_fact:
-        webhook_client1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`webhook-client1`].enrollmentJwt') }}"
+        edge_client1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`edge-client1`].enrollment.ott.jwt') }}"
     - name: Save client JWT
       ansible.builtin.copy:
-        content: "{{ webhook_client1_jwt }}"
-        dest: /tmp/webhook-client1.jwt
+        content: "{{ edge_client1_jwt.0 }}"
+        dest: /tmp/edge-client1.jwt
         mode: "0600"
     - name: Get webhook-server1 JWT
       ansible.builtin.set_fact:
-        webhook_server1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`webhook-server1`].enrollmentJwt') }}"
+        webhook_server1_jwt: "{{ identities.stdout | from_json | json_query('data[?name==`webhook-server1`].enrollment.ott.jwt') }}"
     - name: Save server JWT
       ansible.builtin.copy:
-        content: "{{ webhook_server1_jwt }}"
+        content: "{{ webhook_server1_jwt.0 }}"
         dest: /tmp/webhook-server1.jwt
         mode: "0600"
     - name: Enroll the server1 identity

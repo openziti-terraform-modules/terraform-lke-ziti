@@ -47,7 +47,7 @@ variable "pools" {
 
 variable "console_domain_name" {
     description = "The subdomain name to use for Ziti console"
-    default     = "ziti"  # wildcard DNS record resolves all names to the Nodebalancer
+    default     = "console"  # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "ctrl_domain_name" {
