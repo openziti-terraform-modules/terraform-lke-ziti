@@ -177,7 +177,7 @@ terraform taint null_resource.k8sapiservice_ansible_playbook
 terraform taint null_resource.kubeconfig_ansible_playbook
 helm -n ziti-router1 uninstall ziti-router1  # uninstall releases installed by ansible
 helm -n ziti-service1 uninstall webhook-server1
-terraform apply
+terraform apply -auto-approve
 ```
 
 If you uninstall `ingress-nginx` then your LoadBalancer public IP is released. You'll get a new one when you reinstall, but you'll have to wait for DNS to propagate.
