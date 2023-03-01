@@ -107,7 +107,7 @@ Builds out a Linode Kubernetes Engine cluster with
     ```
 
 1. Visit the console: https://console.my-ziti-cluster.example.com
-1. Check the certificate. If it's from "(STAGING) Let's Encrypt" then everything is working. If not, it's probably DNS.
+1. Check the certificate. If it's from "(STAGING) Let's Encrypt" then the certificate issuer is working. If not, it's probably DNS.
 
     ```bash
     openssl s_client -connect ziti.my-ziti-cluster.example.com:443 </dev/null 2>/dev/null \
@@ -127,9 +127,20 @@ Builds out a Linode Kubernetes Engine cluster with
     cluster_issuer_server = "https://acme-v02.api.letsencrypt.org/directory"
     ```
 
-1. Run `ziti` CLI remotely in the admin container. Change the command to `bash` to login interactively. Then run `zitiLogin`.
+1. Probe the Ziti ingresses. Swap in the following subdomains (substituting your parent zone) to the same `openssl` command you used to probe the console above. All server certificates were issued by the controller's edge signer CA. You can configure [advanced PKI](https://docs.openziti.io/helm-charts/charts/ziti-controller/#advanced-pki) with Helm values.
+
+* `ctrl.my-ziti-cluster.example.com:443`: control plane provided by the controller, consumed by routers
+* `client.my-ziti-cluster.example.com:443`: edge client API provided by the controller, consumed by routers and edge client SDKs
+* `router1-edge.my-ziti-cluster.example.com:443`: edge listener provided by router1, consumed by edge SDKs
+* `router1-transport.my-ziti-cluster.example.com:443`: link listener provided by router1, consumed by future routers you might add
+
+1. Run `ziti` CLI remotely in the admin container. Change the command to `bash` to log in interactively. Then run `zitiLogin`.
 
     ```bash
+    # find the pod name
+    kubectl --namespace ziti-controller get pods
+
+    # exec in the controller pod
     kubectl --namespace ziti-controller exec \
         --stdin --tty \
         ziti-controller-6c79575bb4-lh9nt \
@@ -139,6 +150,29 @@ Builds out a Linode Kubernetes Engine cluster with
                 ziti edge list ers --output-json' \
     | jq --slurp 
     ```
+
+1. Forward local port 1280/tcp to the Ziti management API.
+
+    ```bash
+     kubectl -n ziti-controller port-forward services/ziti-controller-mgmt 1280:443 &>/tmp/k.log &
+     ```
+
+1. Login `ziti` CLI.
+
+    ```bash
+    ziti edge login localhost:1280 \
+        --yes \
+        --username admin \
+        --password $(k -n ziti-controller get secrets ziti-controller-admin-secret -o go-template='{{index .data "admin-password" | base64decode }}')
+    ```
+
+1. Save the management API spec.
+
+    ```bash
+    curl -sk https://localhost:1280/edge/management/v1/swagger.json | tee /tmp/swagger.json
+    ```
+
+1. Visit management API reference in a web browser. https://localhost:1280/edge/management/v1/docs
 
 ## Test Ziti Demo Service
 

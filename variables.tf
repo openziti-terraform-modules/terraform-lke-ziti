@@ -57,7 +57,7 @@ variable "ctrl_domain_name" {
 
 variable "client_domain_name" {
     description = "The subdomain name to use for Ziti Edge client API"
-    default     = "edge"  # wildcard DNS record resolves all names to the Nodebalancer
+    default     = "client"  # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "ziti_console_release" {
@@ -114,6 +114,11 @@ variable "router1_transport_domain_name" {
     default = "router1-transport"
 }
 
+variable "router1_edge_domain_name" {
+    description = "DNS name for the edge service router1 provides to edge SDK clients"
+    default = "router1-edge"
+}
+
 variable "service1_namespace" {
     description = "namespace to create for service1"
     default = "ziti-service1"
@@ -122,8 +127,4 @@ variable "service1_namespace" {
 variable "service1_release" {
     description = "Helm release name for service1"
     default = "webhook-server1"
-}
-variable "router1_edge_domain_name" {
-    description = "DNS name for the edge service router1 provides to edge SDK clients"
-    default = "router1-edge"
 }
