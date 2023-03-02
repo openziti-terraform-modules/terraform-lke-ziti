@@ -17,7 +17,7 @@ Builds out a Linode Kubernetes Engine cluster with
 * `helm`
 * `ansible`
 * `ziti`
-* `pip install --user kubernetes jmespath`
+* `pip install --user kubernetes jmespath dnspython`
 * `ansible-galaxy collection install kubernetes.core`
 
 ## Recommends
