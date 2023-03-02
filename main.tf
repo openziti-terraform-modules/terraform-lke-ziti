@@ -5,7 +5,7 @@ terraform {
   cloud {}
 
   required_providers {
-     local = {
+    local = {
       version = "~> 2.1"
     }
     linode = {
@@ -160,9 +160,7 @@ data "template_file" "ziti_controller_values" {
 data "template_file" "ziti_router1_values" {
   template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
   vars = {
-    # cluster-internal endpoint for routers in any namespace
     ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_controller_namespace}.svc:${var.ctrl_port}"
-    # public endpoint for routers outside the cluster
     # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
     router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
     router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
@@ -174,9 +172,8 @@ resource "helm_release" "ziti_controller" {
   namespace = var.ziti_controller_namespace
   create_namespace = true
   name = "ziti-controller"
-  # repository = "https://openziti.github.io/helm-charts"
-  # chart = "ziti-controller"
-  chart = "/home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-controller"
+  repository = "https://openziti.github.io/helm-charts"
+  chart = "ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
 }
 
@@ -198,9 +195,8 @@ resource "helm_release" "ziti_console" {
   name = var.ziti_console_release
   namespace = "ziti-console"
   create_namespace = true
-  # repository = "https://openziti.github.io/helm-charts"
-  chart = "https://github.com/openziti/helm-charts/releases/download/ziti-console-0.2.3/ziti-console-0.2.3.tgz"
-  # chart = "ziti-console"
+  repository = "https://openziti.github.io/helm-charts"
+  chart = "ziti-console"
   values = [data.template_file.ziti_console_values.rendered]
 }
 
