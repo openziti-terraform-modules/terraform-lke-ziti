@@ -17,6 +17,8 @@ Builds out a Linode Kubernetes Engine cluster with
 * `helm`
 * `ansible`
 * `ziti`
+* `pip install --user kubernetes jmespath`
+* `ansible-galaxy collection install kubernetes.core`
 
 ## Recommends
 
@@ -110,13 +112,13 @@ Builds out a Linode Kubernetes Engine cluster with
 1. Check the certificate. If it's from "(STAGING) Let's Encrypt" then the certificate issuer is working. If not, it's probably DNS.
 
     ```bash
-    openssl s_client -connect ziti.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 \
+    openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 \
         | openssl x509 -noout -subject -issuer
     ```
 
     ```bash
-    $ openssl s_client -connect ziti.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 | openssl x509 -noout -subject -issuer
-    subject=CN = ziti.my-ziti-cluster.example.com
+    $ openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 | openssl x509 -noout -subject -issuer
+    subject=CN = console.my-ziti-cluster.example.com
     issuer=C = US, O = (STAGING) Let's Encrypt, CN = (STAGING) Artificial Apricot R3
     ```
 
