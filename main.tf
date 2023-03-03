@@ -1,9 +1,5 @@
 terraform {
-  # Configure Terraform Cloud with env vars:
-  #   TF_CLOUD_ORGANIZATION
-  #   TF_WORKSPACE
-  cloud {}
-
+  backend "local" {}
   required_providers {
     local = {
       version = "~> 2.1"
@@ -204,7 +200,7 @@ resource "null_resource" "router1_ansible_playbook" {
   depends_on = [helm_release.ziti_controller]
   provisioner "local-exec" {
     command = <<-EOF
-      ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
+      /home/kbingham/.local/bin/ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
         -e controller_namespace=${helm_release.ziti_controller.namespace} \
         -e router1_namespace=${var.router1_namespace} \
         -e router1_release=${var.router1_release}

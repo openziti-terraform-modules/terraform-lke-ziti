@@ -25,7 +25,7 @@ Builds out a Linode Kubernetes Engine cluster with
 * `curl`
 * `jq`
 
-## Delegate DNS and Sign up for Stuff
+## Delegate DNS
 
 1. Delegate a DNS zone to Linode's NSs so Terraform can manage the global zone. For example, to delegate my-ziti-cluster.example.com to Linode you need to create NS records in example.com named "my-ziti-cluster". You can verify it's working by checking the NS records with `dig` or [Google DNS Toolbox](https://toolbox.googleapps.com/apps/dig/#NS/) (record type `NS`).
 
@@ -38,13 +38,10 @@ Builds out a Linode Kubernetes Engine cluster with
     my-ziti-cluster.example.com.    1765    IN      NS      ns1.linode.com.
     ```
 
-1. Get a Free [Terraform Cloud](https://app.terraform.io/app) Organization and API token.
 1. Configure your shell env for this TF plan.
 
     ```bash
     export TF_VAR_token=XXX                # TF cloud API token
-    export TF_CLOUD_ORGANIZATION=XXX       # your TF cloud org
-    export TF_WORKSPACE=my-ziti-workspace  # workspace for this plan's remote state
     export KUBECONFIG=./kube-config        # TF will write this file in plan dir
     ```
 
