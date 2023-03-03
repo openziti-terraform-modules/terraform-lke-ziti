@@ -63,6 +63,16 @@
     - name: Get router1 JWT from Found Routers
       ansible.builtin.set_fact:
         router1_jwt: "{{ edge_routers.stdout | from_json | json_query('data[?name==`router1`].enrollmentJwt') }}"
+    - debug:
+        var: client_dns
+    - debug:
+        var: nodebalancer_ip
+    - name: Wait up to 30m for DNS propagation
+      debug:
+        msg: waiting up to 30m for DNS
+      until: lookup('community.general.dig', client_dns) == nodebalancer_ip
+      retries: 180
+      delay: 10
     - name: Install Router Chart
       kubernetes.core.helm:
         create_namespace: true
