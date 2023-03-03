@@ -1,5 +1,11 @@
 terraform {
   backend "local" {}
+  # If you want to save state in Terraform Cloud:
+  # Configure these env vars, uncomment cloud {} 
+  # and comment out backend "local" {}
+  #   TF_CLOUD_ORGANIZATION
+  #   TF_WORKSPACE
+  # cloud {}
   required_providers {
     local = {
       version = "~> 2.1"

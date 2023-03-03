@@ -47,6 +47,14 @@ Builds out a Linode Kubernetes Engine cluster with
     export KUBECONFIG=./kube-config        # TF will write this file in plan dir
     ```
 
+    ***Note:*** If you want to save state in [Terraform Cloud](https://app.terraform.io/app). Configure the additional env vars, uncomment `cloud {}` and comment out `backend "local" {}` in `main.tf` file.
+    ```bash
+    export TF_CLOUD_ORGANIZATION=XXX
+    export TF_WORKSPACE=XXX
+    ```
+    Also, you need to select your remote workspace to only save state and not run it remotely.
+    ![](images/tf-cloud-execution-mode.png)
+
 ## Run Terraform
 
 1. In `terraform.tfvars`, specify the Linode size and count, etc., e.g.,
