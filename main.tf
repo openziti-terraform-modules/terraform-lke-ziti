@@ -206,10 +206,12 @@ resource "null_resource" "router1_ansible_playbook" {
   depends_on = [helm_release.ziti_controller]
   provisioner "local-exec" {
     command = <<-EOF
-      /home/kbingham/.local/bin/ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
+      ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
         -e controller_namespace=${helm_release.ziti_controller.namespace} \
         -e router1_namespace=${var.router1_namespace} \
-        -e router1_release=${var.router1_release}
+        -e router1_release=${var.router1_release} \
+        -e client_dns=${var.client_domain_name}.${var.domain_name} \
+        -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
     EOF
     environment = {
       K8S_AUTH_KUBECONFIG = "../kube-config"

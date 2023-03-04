@@ -70,6 +70,7 @@ Builds out a Linode Kubernetes Engine cluster with
             count : 2
         }
     ]
+    tags = ["alice-ziti-lab"]
     ```
 
 1. Initialize the workspace.
