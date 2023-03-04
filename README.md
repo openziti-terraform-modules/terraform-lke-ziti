@@ -43,7 +43,7 @@ Builds out a Linode Kubernetes Engine cluster with
 1. Configure your shell env for this TF plan.
 
     ```bash
-    export TF_VAR_token=XXX                # TF cloud API token
+    export TF_VAR_token=XXX                # Linode API token
     export KUBECONFIG=./kube-config        # TF will write this file in plan dir
     ```
 
