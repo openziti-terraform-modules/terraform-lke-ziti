@@ -26,10 +26,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "2.0.1"
     }
-    # openziti = {
-    #   source  = "terraform.netfoundry.io/openziti/openapi"
-    #   version = ">= 3.0.0"
-    # }
   }
 }
 
@@ -81,7 +77,7 @@ module "cert_manager" {
   cluster_issuer_server                  = var.cluster_issuer_server
   cluster_issuer_private_key_secret_name = "${var.cluster_issuer_name}-secret"
   additional_set = [{
-    name = "enableCertificateOwnerRef"
+    name  = "enableCertificateOwnerRef"
     value = "true"
   }]
 }
@@ -94,12 +90,13 @@ resource "kubernetes_namespace" ziti_controller {
 
 resource "helm_release" "trust_manager" {
   depends_on   = [module.cert_manager, kubernetes_namespace.ziti_controller]
-  chart      = "trust-manager"
-  repository = "https://charts.jetstack.io"
-  name       = "trust-manager"
-  namespace  = module.cert_manager.namespace
+  chart        = "trust-manager"
+  version      = "<0.5"
+  repository   = "https://charts.jetstack.io"
+  name         = "trust-manager"
+  namespace    = module.cert_manager.namespace
   set {
-    name = "app.trust.namespace"
+    name  = "app.trust.namespace"
     value = var.ziti_controller_namespace
   }
 }
@@ -113,13 +110,14 @@ data "template_file" "ingress_nginx_values" {
 }
 
 resource "helm_release" "ingress_nginx" {
-  depends_on   = [module.cert_manager]
-  name       = "ingress-nginx"
-  namespace = "ingress-nginx"
+  depends_on       = [module.cert_manager]
+  name             = "ingress-nginx"
+  version          = "<5"
+  namespace        = "ingress-nginx"
   create_namespace = true
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  values = [data.template_file.ingress_nginx_values.rendered]
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
+  values           = [data.template_file.ingress_nginx_values.rendered]
 }
 
 # discover the external IP of the Nodebalancer provisioned for the ingress-nginx
@@ -127,35 +125,35 @@ resource "helm_release" "ingress_nginx" {
 data "kubernetes_service" "ingress_nginx_controller" {
   depends_on   = [helm_release.ingress_nginx]
   metadata {
-    name = "ingress-nginx-controller"
+    name      = "ingress-nginx-controller"
     namespace = "ingress-nginx"
   }
 }
 
 resource "linode_domain" "cluster_zone" {
-    type = "master"
-    domain = var.domain_name
+    type      = "master"
+    domain    = var.domain_name
     soa_email = var.email
-    tags = var.tags
+    tags      = var.tags
 }
 
 resource "linode_domain_record" "wildcard_record" {
-    domain_id = linode_domain.cluster_zone.id
-    name = "*"
+    domain_id   = linode_domain.cluster_zone.id
+    name        = "*"
     record_type = "A"
-    target = data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
-    ttl_sec = var.wildcard_ttl_sec
+    target      = data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
+    ttl_sec     = var.wildcard_ttl_sec
 }
 
 data "template_file" "ziti_controller_values" {
   template = "${file("helm-chart-values/values-ziti-controller.yaml")}"
   vars = {
-    ctrl_port = var.ctrl_port
-    client_port = var.client_port
-    mgmt_port = var.mgmt_port
-    ctrl_domain_name = var.ctrl_domain_name
+    ctrl_port          = var.ctrl_port
+    client_port        = var.client_port
+    mgmt_port          = var.mgmt_port
+    ctrl_domain_name   = var.ctrl_domain_name
     client_domain_name = var.client_domain_name
-    domain_name = var.domain_name
+    domain_name        = var.domain_name
   }
 }
 
@@ -174,6 +172,7 @@ resource "helm_release" "ziti_controller" {
   namespace = var.ziti_controller_namespace
   create_namespace = true
   name = "ziti-controller"
+  version = "<0.2"
   repository = "https://openziti.github.io/helm-charts"
   chart = "ziti-controller"
   values = [data.template_file.ziti_controller_values.rendered]
@@ -199,6 +198,7 @@ resource "helm_release" "ziti_console" {
   create_namespace = true
   repository = "https://openziti.github.io/helm-charts"
   chart = "ziti-console"
+  version = "<0.3"
   values = [data.template_file.ziti_console_values.rendered]
 }
 

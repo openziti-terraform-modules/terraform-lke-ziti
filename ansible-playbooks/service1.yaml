@@ -162,6 +162,7 @@
         release_name: "{{ service1_release }}"
         chart_repo_url: https://openziti.github.io/helm-charts
         chart_ref: httpbin
+        chart_version: "<0.2"
         values:
           zitiServiceName: "webhook-service1"
           zitiIdentity: "{{ lookup('ansible.builtin.template', '/tmp/webhook-server1.json', convert_data=False) }}"
