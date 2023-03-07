@@ -80,6 +80,7 @@
         release_name: "{{ router1_release }}"
         chart_repo_url: https://openziti.github.io/helm-charts
         chart_ref: ziti-router
+        chart_version: "<0.3"
         values:
           enrollmentJwt: "{{ router1_jwt.0 | default(' ') }}"
         values_files:
