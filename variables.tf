@@ -51,13 +51,18 @@ variable "console_domain_name" {
 }
 
 variable "ctrl_domain_name" {
-    description = "The subdomain name to use for Ziti router ctrl plane"
+    description = "The subdomain name to use for Ziti router Ctrl Plane"
     default     = "ctrl"     # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "client_domain_name" {
-    description = "The subdomain name to use for Ziti Edge client API"
+    description = "The subdomain name to use for Ziti Edge Client API"
     default     = "client"   # wildcard DNS record resolves all names to the Nodebalancer
+}
+
+variable "mgmt_domain_name" {
+    description = "The subdomain name to use for Ziti Edge Management API"
+    default     = "management"   # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "ziti_console_release" {

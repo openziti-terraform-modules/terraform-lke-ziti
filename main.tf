@@ -26,7 +26,7 @@ terraform {
             source  = "hashicorp/kubernetes"
             version = "2.0.1"
         }
-        restapi = {
+        openziti = {
             source = "qrkourier/restapi"
             version = "~> 1.19.0"
         }
@@ -34,19 +34,14 @@ terraform {
 }
 
 provider openziti {
-    uri                   = var.ZITI_MGMT_API
+    uri                   = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}"
     debug                 = true
     create_returns_object = true
     write_returns_object  = false
-    # insecure              = true
-    # ca_certs              = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
-    username              = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
-    password              = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
-    auth_config           = {
-        token_header = "zt-session"
-        token_path   = "data/token"
-        endpoint     = "/authenticate"
-    }
+    insecure              = false
+    cacerts_string        = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
+    ziti_username         = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+    ziti_password         = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
 }
 
 provider "linode" {
@@ -90,6 +85,7 @@ provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-ma
 }
 
 module "cert_manager" {
+    depends_on = [linode_lke_cluster.linode_lke]
     source        = "terraform-iaac/cert-manager/kubernetes"
 
     cluster_issuer_email                   = var.email
@@ -169,6 +165,7 @@ data "template_file" "ziti_controller_values" {
         mgmt_port = var.mgmt_port
         ctrl_domain_name = var.ctrl_domain_name
         client_domain_name = var.client_domain_name
+        mgmt_domain_name = var.mgmt_domain_name
         domain_name = var.domain_name
     }
 }
@@ -236,59 +233,58 @@ resource "helm_release" "ziti_console" {
     values           = [data.template_file.ziti_console_values.rendered]
 }
 
-resource "null_resource" "router1_ansible_playbook" {
-    depends_on = [helm_release.ziti_controller]
+resource "null_resource" "wait_for_dns" {
+    depends_on = [linode_domain_record.wildcard_record]
+    triggers = {
+        always_run = "${timestamp()}"
+    }
     provisioner "local-exec" {
         command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/router1.yaml \
-                -e controller_namespace=${helm_release.ziti_controller.namespace} \
-                -e router1_namespace=${var.router1_namespace} \
-                -e router1_release=${var.router1_release} \
+            ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
                 -e client_dns=${var.client_domain_name}.${var.domain_name} \
                 -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
         EOF
-        environment = {
-            K8S_AUTH_KUBECONFIG = "../kube-config"
-        }
     }
 }
 
-resource "null_resource" "service1_ansible_playbook" {
-    depends_on = [null_resource.router1_ansible_playbook]
-    provisioner "local-exec" {
-        command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/service1.yaml \
-                -e controller_namespace=${helm_release.ziti_controller.namespace} \
-                -e service1_namespace=${var.service1_namespace} \
-                -e service1_release=${var.service1_release}
-        EOF
-        environment = {
-            K8S_AUTH_KUBECONFIG = "../kube-config"
-        }
+resource "restapi_object" "router1" {
+    depends_on  = [null_resource.wait_for_dns]
+    debug       = true
+    provider    = openziti
+    path        = "/edge-routers"
+    read_search = {
+        results_key = "data"
     }
+    data = <<-EOF
+        {
+            "name": "router1",
+            "isTunnelerEnabled": true,
+            "roleAttributes": [
+                "public-routers"
+            ]
+        }
+    EOF
 }
 
-resource "null_resource" "k8sapiservice_ansible_playbook" {
-    depends_on = [null_resource.service1_ansible_playbook]
-    provisioner "local-exec" {
-        command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/k8sapiservice.yaml \
-                -e controller_namespace=${helm_release.ziti_controller.namespace}
-        EOF
-        environment = {
-            K8S_AUTH_KUBECONFIG = "../kube-config"
-        }
-    }
+data "restapi_object" "router1" {
+    provider = openziti
+    path = "/edge-routers"
+    search_key = "name"
+    search_value = "router1"
+    results_key = "data"
 }
 
-resource "null_resource" "kubeconfig_ansible_playbook" {
-    depends_on = [null_resource.k8sapiservice_ansible_playbook]
-    provisioner "local-exec" {
-        command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
-        EOF
-        environment = {
-            K8S_AUTH_KUBECONFIG = "../kube-config"
-        }
-    }
-}
+# resource "null_resource" "kubeconfig_ansible_playbook" {
+#     depends_on = [
+#         linode_lke_cluster.linode_lke,
+#         restapi_object.k8sapi_service
+#     ]
+#     provisioner "local-exec" {
+#         command = <<-EOF
+#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+#         EOF
+#         environment = {
+#             K8S_AUTH_KUBECONFIG = "../kube-config"
+#         }
+#     }
+# }

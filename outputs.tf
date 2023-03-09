@@ -71,3 +71,7 @@ resource "local_file" "ziti_router1_values" {
 # output "ziti_controller_mgmt" {
 #    value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
 # }
+
+output "router1_jwt" {
+  value = jsondecode(restapi_object.router1.api_response).data.enrollmentJwt
+}
