@@ -42,11 +42,11 @@ resource "local_sensitive_file" "kubeconfig" {
 #   value = data.template_file.ziti_router1_values.rendered
 # }
 
-resource "local_file" "ziti_router1_values" {
-  filename     = "/tmp/values-ziti-router1.yaml"
-  content      = data.template_file.ziti_router1_values.rendered
-  file_permission = 0600
-}
+# resource "local_file" "ziti_router1_values" {
+#   filename     = "/tmp/values-ziti-router1.yaml"
+#   content      = data.template_file.ziti_router1_values.rendered
+#   file_permission = 0600
+# }
 
 # output "ctrl_domain_name" {
 #   value = var.ctrl_domain_name
@@ -71,7 +71,3 @@ resource "local_file" "ziti_router1_values" {
 # output "ziti_controller_mgmt" {
 #    value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
 # }
-
-output "router1_jwt" {
-  value = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
-}

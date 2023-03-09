@@ -94,19 +94,14 @@ variable "mgmt_port" {
     default     = 443
 }
 
-variable "ziti_controller_namespace" {
-    description = "Ziti Controller namespace"
-    default     = "ziti-controller"
+variable "ziti_namespace" {
+    description = "Ziti Namespace"
+    default     = "ziti"
 }
 
 variable "wildcard_ttl_sec" {
     description = "max seconds recursive nameservers should cache the wildcard record"
     default = "3600"
-}
-
-variable "router1_namespace" {
-    description = "namespace to create for router1"
-    default = "ziti-router1"
 }
 
 variable "router1_release" {
@@ -125,8 +120,8 @@ variable "router1_edge_domain_name" {
 }
 
 variable "service1_namespace" {
-    description = "namespace to create for service1"
-    default = "ziti-service1"
+    description = "namespace to place service1"
+    default = "default"
 }
 
 variable "service1_release" {

@@ -32,3 +32,5 @@ linkListeners:
 
 ctrl:
   endpoint: ${ctrl_endpoint}
+
+enrollmentJwt: ${jwt}

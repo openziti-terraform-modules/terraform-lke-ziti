@@ -28,7 +28,7 @@ terraform {
         }
         openziti = {
             source = "qrkourier/restapi"
-            version = "~> 1.19.0"
+            version = "~> 1.20.0"
         }
     }
 }
@@ -98,14 +98,14 @@ module "cert_manager" {
     }]
 }
 
-resource "kubernetes_namespace" ziti_controller {
+resource "kubernetes_namespace" ziti {
     metadata {
-        name = var.ziti_controller_namespace
+        name = var.ziti_namespace
     }
 }
 
 resource "helm_release" "trust_manager" {
-    depends_on   = [module.cert_manager, kubernetes_namespace.ziti_controller]
+    depends_on   = [module.cert_manager, kubernetes_namespace.ziti]
     chart      = "trust-manager"
     repository = "https://charts.jetstack.io"
     name       = "trust-manager"
@@ -113,7 +113,7 @@ resource "helm_release" "trust_manager" {
     namespace  = module.cert_manager.namespace
     set {
         name = "app.trust.namespace"
-        value = var.ziti_controller_namespace
+        value = var.ziti_namespace
     }
 }
 
@@ -167,16 +167,6 @@ data "template_file" "ziti_controller_values" {
         client_domain_name = var.client_domain_name
         mgmt_domain_name = var.mgmt_domain_name
         domain_name = var.domain_name
-    }
-}
-
-data "template_file" "ziti_router1_values" {
-    template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
-    vars = {
-        ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_controller_namespace}.svc:${var.ctrl_port}"
-        # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
-        router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
-        router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
     }
 }
 
@@ -252,6 +242,10 @@ resource "null_resource" "wait_for_dns" {
     }
 }
 
+# from this point onward we have everything we need to use the Ziti mgmt API:
+# DNS, CA certs, and username/password. Subsequent Ziti restapi_object resources
+# should depend on this or any following restapi_object to ensure these
+# prerequesites are satisfied.
 resource "restapi_object" "router1" {
     depends_on  = [
         null_resource.wait_for_dns,
@@ -274,6 +268,10 @@ resource "restapi_object" "router1" {
     EOF
 }
 
+# the management API doesn't return the created or updated properties, and this
+# plugin isn't yet smart enough to go look up the new state in the API by
+# following the link to the ID of the resource. So a pair of Terraform
+# resource+data source are necessary to read the changed state.
 data "restapi_object" "router1" {
     depends_on = [restapi_object.router1]
     provider = openziti
@@ -283,17 +281,38 @@ data "restapi_object" "router1" {
     results_key = "data"
 }
 
-# resource "null_resource" "kubeconfig_ansible_playbook" {
-#     depends_on = [
-#         linode_lke_cluster.linode_lke,
-#         restapi_object.k8sapi_service
-#     ]
-#     provisioner "local-exec" {
-#         command = <<-EOF
-#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
-#         EOF
-#         environment = {
-#             K8S_AUTH_KUBECONFIG = "../kube-config"
-#         }
-#     }
-# }
+data "template_file" "ziti_router1_values" {
+    template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
+    vars = {
+        ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_namespace}.svc:${var.ctrl_port}"
+        # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
+        router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
+        router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
+        jwt = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
+    }
+}
+
+resource "helm_release" "ziti_router1" {
+    depends_on = [data.restapi_object.router1]
+    name = var.router1_release
+    namespace = helm_release.ziti_controller.namespace
+    repository = "https://openziti.github.io/helm-charts"
+    chart = "ziti-router"
+    version = "<0.3"
+    values = [data.template_file.ziti_router1_values.rendered]
+}
+
+resource "null_resource" "kubeconfig_ansible_playbook" {
+    depends_on = [
+        linode_lke_cluster.linode_lke,
+        restapi_object.k8sapi_service
+    ]
+    provisioner "local-exec" {
+        command = <<-EOF
+            ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+        EOF
+        environment = {
+            K8S_AUTH_KUBECONFIG = "../kube-config"
+        }
+    }
+}
