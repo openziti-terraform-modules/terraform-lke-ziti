@@ -73,5 +73,5 @@ resource "local_file" "ziti_router1_values" {
 # }
 
 output "router1_jwt" {
-  value = jsondecode(restapi_object.router1.api_response).data.enrollmentJwt
+  value = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
 }

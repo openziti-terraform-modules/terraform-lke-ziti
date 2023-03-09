@@ -34,12 +34,12 @@ terraform {
 }
 
 provider openziti {
-    uri                   = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}"
+    uri                   = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}/edge/management/v1"
     debug                 = true
     create_returns_object = true
     write_returns_object  = false
     insecure              = false
-    cacerts_string        = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
+    cacerts_file          = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
     ziti_username         = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
     ziti_password         = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
 }
@@ -194,6 +194,11 @@ resource "helm_release" "ziti_controller" {
     values           = [data.template_file.ziti_controller_values.rendered]
 }
 
+resource "local_file" "ctrl_plane_cas" {
+  content  = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
+  filename = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
+}
+
 data "kubernetes_secret" "admin_secret" {
     metadata {
         name = "${helm_release.ziti_controller.name}-admin-secret"
@@ -248,7 +253,10 @@ resource "null_resource" "wait_for_dns" {
 }
 
 resource "restapi_object" "router1" {
-    depends_on  = [null_resource.wait_for_dns]
+    depends_on  = [
+        null_resource.wait_for_dns,
+        local_file.ctrl_plane_cas
+    ]
     debug       = true
     provider    = openziti
     path        = "/edge-routers"
@@ -267,6 +275,7 @@ resource "restapi_object" "router1" {
 }
 
 data "restapi_object" "router1" {
+    depends_on = [restapi_object.router1]
     provider = openziti
     path = "/edge-routers"
     search_key = "name"
