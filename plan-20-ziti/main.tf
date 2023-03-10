@@ -37,7 +37,7 @@ data "terraform_remote_state" "lke_state" {
 }
 
 provider restapi {
-    uri                   = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt}"
+    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
     debug                 = true
     cacerts_file          = "${path.root}/../plan-10-lke/.terraform/tmp/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
@@ -83,7 +83,8 @@ resource "restapi_object" "router1" {
             "name": "router1",
             "isTunnelerEnabled": true,
             "roleAttributes": [
-                "public-routers"
+                "public-routers",
+                "mgmt-servers"
             ]
         }
     EOF
@@ -120,6 +121,24 @@ resource "helm_release" "ziti_router1" {
     values = [data.template_file.ziti_router1_values.rendered]
 }
 
+resource "restapi_object" "router1_identity" {
+    debug   = true
+    provider    = restapi
+    path        = "/identities"
+    read_search = {
+        results_key = "data"
+    }
+    update_method = "patch"
+    data = <<-EOF
+        {
+            "id": "aRdvIIfCA7",
+            "roleAttributes": [
+                "mgmt-servers6"
+            ]
+        }
+    EOF
+}
+
 resource "restapi_object" "client_identity" {
     provider    = restapi
     path        = "/identities"
@@ -145,9 +164,119 @@ resource "restapi_object" "client_identity" {
 
 resource "local_file" "client_identity" {
     depends_on = [restapi_object.client_identity]
-    content  = jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt
+    content  = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
     # filename = "${path.root}/.terraform/tmp/edge-client.jwt"
     filename = "/tmp/lke-edge-client.jwt"
+}
+
+resource "restapi_object" "mgmt_intercept_config" {
+    depends_on = [data.restapi_object.intercept_v1_config_type]
+    provider    = restapi
+    path        = "/configs"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "mgmt-intercept-config",
+            "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
+            "data": {
+                "protocols": ["tcp"],
+                "addresses": ["mgmt.ziti"], 
+                "portRanges": [{"low":443, "high":443}]
+            }
+        }
+    EOF
+}
+
+resource "restapi_object" "mgmt_host_config" {
+    provider    = restapi
+    path        = "/configs"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "mgmt-host-config",
+            "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
+            "data": {
+                "protocol": "tcp",
+                "address": "${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_internal_host}",
+                "port": ${data.terraform_remote_state.lke_state.outputs.mgmt_port}
+            }
+        }
+    EOF
+}
+
+resource "restapi_object" "mgmt_service" {
+    depends_on = [
+        restapi_object.mgmt_intercept_config,
+        restapi_object.mgmt_host_config
+    ]
+    provider    = restapi
+    path        = "/services"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "mgmt-service",
+            "encryptionRequired": true,
+            "configs": [
+                "${jsondecode(restapi_object.mgmt_intercept_config.api_response).data.id}",
+                "${jsondecode(restapi_object.mgmt_host_config.api_response).data.id}"
+            ],
+            "roleAttributes": [
+                "mgmt-services"
+            ]
+        }
+    EOF
+}
+
+resource "restapi_object" "mgmt_bind_service_policy" {
+    depends_on = [restapi_object.mgmt_service]
+    provider    = restapi
+    path        = "/service-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "mgmt-bind-policy",
+            "type": "Bind",
+            "semantic": "AnyOf",
+            "identityRoles": [
+                "#mgmt-servers"
+            ],
+            "postureCheckRoles": [],
+            "serviceRoles": [
+                "@${jsondecode(restapi_object.mgmt_service.api_response).data.id}"
+            ]
+        }
+    EOF
+}
+
+resource "restapi_object" "mgmt_dial_service_policy" {
+    depends_on = [restapi_object.mgmt_service]
+    provider    = restapi
+    path        = "/service-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "mgmt-dial-policy",
+            "type": "Dial",
+            "semantic": "AnyOf",
+            "identityRoles": [
+                "#mgmt-clients"
+            ],
+            "postureCheckRoles": [],
+            "serviceRoles": [
+                "@${jsondecode(restapi_object.mgmt_service.api_response).data.id}"
+            ]
+        }
+    EOF
 }
 
 resource "restapi_object" "webhook_server_identity" {
@@ -231,7 +360,7 @@ resource "restapi_object" "webhook_intercept_config" {
             "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
             "data": {
                 "protocols": ["tcp"],
-                "addresses": ["webhook.ziti"], 
+                "addresses": ["webhook2.ziti"], 
                 "portRanges": [{"low":80, "high":80}]
             }
         }

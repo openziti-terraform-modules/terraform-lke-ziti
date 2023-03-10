@@ -52,12 +52,12 @@ resource "local_sensitive_file" "kubeconfig" {
 #   value = var.ctrl_domain_name
 # }
 
-# output "ctrl_port" {
-#   value = var.ctrl_port
-# }
+output "mgmt_port" {
+  value = var.mgmt_port
+}
 
 output "domain_name" {
-   value = var.domain_name
+    value = var.domain_name
 }
 
 # output "email" {
@@ -68,8 +68,12 @@ output "domain_name" {
 #    value = var.tags
 # }
 
-output "ziti_controller_mgmt" {
-    value = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}/edge/management/v1"
+output "ziti_controller_external_host" {
+    value = "${var.mgmt_domain_name}.${var.domain_name}"
+}
+
+output "ziti_controller_mgmt_internal_host" {
+    value = "${helm_release.ziti_controller.name}-mgmt.${var.ziti_namespace}.svc"
 }
 
 output "ziti_controller_ctrl" {
