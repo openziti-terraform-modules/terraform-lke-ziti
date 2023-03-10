@@ -30,7 +30,7 @@ terraform {
 }
 
 provider "linode" {
-    token = var.token
+    token = var.LINODE_TOKEN
 }
 
 provider "helm" {
@@ -162,12 +162,12 @@ resource "helm_release" "ziti_controller" {
         helm_release.trust_manager, 
         helm_release.ingress_nginx
     ]
-    namespace        = var.ziti_controller_namespace
-    create_namespace = true
+    namespace        = var.ziti_namespace
     name             = "ziti-controller"
     version          = "<0.2"
-    repository       = "https://openziti.github.io/helm-charts"
-    chart            = "ziti-controller"
+    # repository       = "https://openziti.github.io/helm-charts"
+    # chart            = "ziti-controller"
+    chart = "/home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-controller"
     values           = [data.template_file.ziti_controller_values.rendered]
 }
 
@@ -215,8 +215,7 @@ data "template_file" "ziti_console_values" {
 resource "helm_release" "ziti_console" {
     depends_on       = [helm_release.ingress_nginx]
     name             = var.ziti_console_release
-    namespace        = "ziti-console"
-    create_namespace = true
+    namespace        = var.ziti_namespace
     repository       = "https://openziti.github.io/helm-charts"
     chart            = "ziti-console"
     version          = "<0.3"
@@ -236,18 +235,3 @@ resource "null_resource" "wait_for_dns" {
         EOF
     }
 }
-
-# resource "null_resource" "kubeconfig_ansible_playbook" {
-#     depends_on = [
-#         linode_lke_cluster.linode_lke,
-#         restapi_object.k8sapi_service
-#     ]
-#     provisioner "local-exec" {
-#         command = <<-EOF
-#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
-#         EOF
-#         environment = {
-#             K8S_AUTH_KUBECONFIG = "../kube-config"
-#         }
-#     }
-# }

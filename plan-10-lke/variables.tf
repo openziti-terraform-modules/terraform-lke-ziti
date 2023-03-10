@@ -1,4 +1,4 @@
-variable "token" {
+variable "LINODE_TOKEN" {
     description = "Your Linode API Personal Access Token. (required)"
 }
 

@@ -119,3 +119,257 @@ resource "helm_release" "ziti_router1" {
     wait = false
     values = [data.template_file.ziti_router1_values.rendered]
 }
+
+resource "restapi_object" "client_identity" {
+    provider    = restapi
+    path        = "/identities"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "edge-client",
+            "type": "Device",
+            "enrollment": {
+                "ott": true,
+            }
+            "roleAttributes": [
+                "webhook-clients",
+                "k8sapi-clients",
+                "mgmt-clients"
+            ]
+        }
+    EOF
+}
+
+resource "local_file" "client_identity" {
+    depends_on = [restapi_object.client_identity]
+    content  = "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.enrollment.ott.jwt}"
+    # filename = "${path.root}/.terraform/tmp/edge-client.jwt"
+    filename = "/tmp/lke-edge-client.jwt"
+}
+
+resource "restapi_object" "webhook_identity" {
+    provider    = restapi
+    path        = "/identities"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-server1",
+            "type": "Device",
+            "enrollment": {
+                "ott": true,
+            }
+            "roleAttributes": [
+                "webhook-servers"
+            ]
+        }
+    EOF
+}
+
+resource "null_resource" "enroll_webhook_server_identity" {
+    depends_on = [
+        restapi_object.webhook_identity
+    ]
+    provisioner "local-exec" {
+        command = <<-EOF
+            ziti edge enroll --out ${path.root}/.terraform/tmp/webhook-server.json
+        EOF
+        environment = {}
+    }
+}
+
+resource "helm_release" "webhook_server" {
+    depends_on   = [null_resource.enroll_webhook_server_identity]
+    chart        = "httpbin"
+    version      = "<0.2"
+    repository   = "https://openziti.github.io/helm-charts"
+    name         = "webhook_server"
+    namespace    = "default"
+    set {
+        name = "zitiServiceName"
+        value = "webhook-service"
+    }
+    set {
+        name = "zitiIdentity"
+        value = file("${path.root}/.terraform/tmp/webhook-server.json")
+    }
+}
+
+data "restapi_object" "intercept_v1_config_type" {
+    provider    = restapi
+    path = "/config-types"
+    search_key = "name"
+    search_value = "intercept.v1"
+    results_key = "data"
+    debug = true
+}
+
+
+resource "restapi_object" "webhook_intercept_config" {
+    provider    = restapi
+    path        = "/configs"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-intercept-config",
+            "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
+            "data": {
+                "protocols": ["tcp"],
+                "addresses": ["webhook.ziti"], 
+                "portRanges": [{"low":80, "high":80}]}
+        }
+    EOF
+}
+
+data "restapi_object" "host_v1_config_type" {
+    provider    = restapi
+    path = "/config-types"
+    search_key = "name"
+    search_value = "host.v1"
+    results_key = "data"
+    debug = true
+}
+
+
+resource "restapi_object" "webhook_host_config" {
+    provider    = restapi
+    path        = "/configs"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-host-config",
+            "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
+            "data": {
+                "protocol": "tcp",
+                "address": "httpbin",
+                "port": 8080
+            }
+    EOF
+}
+
+resource "restapi_object" "webhook_service" {
+    provider    = restapi
+    path        = "/services"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-service",
+            "encryptionRequired": true,
+            "configs": [
+                "webhook-intercept-config",
+                "webhook-host-config"
+            ],
+            "roleAttributes": [
+                "webhook-services"
+            ]
+        }
+    EOF
+}
+
+resource "restapi_object" "webhook_bind_service_policy" {
+    provider    = restapi
+    path        = "/service-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-bind-policy",
+            "type": "Bind",
+            "semantic": "AnyOf",
+            "identityRoles": [
+                "#webhook-servers"
+            ],
+            "postureCheckRoles": [],
+            "serviceRoles": [
+                "@webhook-service"
+            ]
+        }
+    EOF
+}
+
+resource "restapi_object" "webhook_dial_service_policy" {
+    provider    = restapi
+    path        = "/service-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "webhook-dial-policy",
+            "type": "Dial",
+            "semantic": "AnyOf",
+            "identityRoles": [
+                "#webhook-clients"
+            ],
+            "postureCheckRoles": [],
+            "serviceRoles": [
+                "@webhook-service"
+            ]
+        }
+    EOF
+}
+
+resource "restapi_object" "public_edge_router_policy" {
+    provider    = restapi
+    path        = "/edge-router-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "public-routers",
+            "semantic": "AnyOf",
+            "edgeRouterRoles": [
+                "#public-routers"
+            ],
+            "identityRoles": [
+                "#all"
+            ],
+        }
+    EOF
+}
+
+resource "restapi_object" "public_service_edge_router_policy" {
+    provider    = restapi
+    path        = "/service-edge-router-policies"
+    read_search = {
+        results_key = "data"
+    }
+    data = <<-EOF
+        {
+            "name": "public-routers",
+            "semantic": "AnyOf",
+            "edgeRouterRoles": [
+                "#public-routers"
+            ],
+            "serviceRoles": [
+                "#all"
+            ],
+        }
+    EOF
+}
+
+# resource "null_resource" "kubeconfig_ansible_playbook" {
+#     depends_on = [
+#         linode_lke_cluster.linode_lke,
+#         restapi_object.k8sapi_service
+#     ]
+#     provisioner "local-exec" {
+#         command = <<-EOF
+#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+#         EOF
+#         environment = {
+#             K8S_AUTH_KUBECONFIG = "../kube-config"
+#         }
+#     }
+# }

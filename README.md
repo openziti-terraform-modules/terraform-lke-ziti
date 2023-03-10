@@ -43,7 +43,7 @@ Builds out a Linode Kubernetes Engine cluster with
 1. Configure your shell env for this TF plan.
 
     ```bash
-    export TF_VAR_token=XXX                # Linode API token
+    export TF_VAR_LINODE_TOKEN=XXX                # Linode API token
     export KUBECONFIG=./kube-config        # TF will write this file in plan dir
     ```
 
@@ -55,9 +55,11 @@ Builds out a Linode Kubernetes Engine cluster with
     Furthermore, you need to select your remote workspace to only save state and not run the plan remotely.
     ![](images/tf-cloud-execution-mode.png)
 
-## Run Terraform
+## Apply the LKE Terraform Plan
 
-1. In `terraform.tfvars`, specify the Linode size and count, etc., e.g.,
+This first TF plan creates the LKE cluster and installs an OpenZiti Controller and Console with a Let's Encrypt certificate.
+
+1. In `./plan-10-lke/terraform.tfvars`, specify the Linode size and count, etc., e.g.,
 
     ```hcl
     label = "my-ziti-cluster"
@@ -76,19 +78,19 @@ Builds out a Linode Kubernetes Engine cluster with
 1. Initialize the workspace.
 
     ```bash
-    terraform init
+    (cd ./plan-10-lke/; terraform init;)
     ```
 
 1. Perform a dry-run.
 
     ```bash
-    terraform plan
+    (cd ./plan-10-lke/; terraform plan;)
     ```
 
 1. Apply the plan.
 
     ```bash
-    terraform apply
+    (cd ./plan-10-lke/; terraform apply;)
     ```
 
 ## Play with the Cluster and Ziti Admin
@@ -139,8 +141,39 @@ Builds out a Linode Kubernetes Engine cluster with
 
 * `ctrl.my-ziti-cluster.example.com:443`: control plane provided by the controller, consumed by routers
 * `client.my-ziti-cluster.example.com:443`: edge client API provided by the controller, consumed by routers and edge client SDKs
-* `router1-edge.my-ziti-cluster.example.com:443`: edge listener provided by router1, consumed by edge SDKs
+* `management.my-ziti-cluster.example.com:443`: edge management API provided by the controller, consumed by `ziti` CLI, OpenZiti Console, and integrations like the Terraform Provider.
+* `router1-edge.my-ziti-cluster.example.com:443`: edge listener provided by router1, consumed by Edge SDKs connecting to OpenZiti Services.
 * `router1-transport.my-ziti-cluster.example.com:443`: link listener provided by router1, consumed by future routers you might add
+
+    ```bash
+    openssl s_client -connect management.my-ziti-cluster.example.com:443 <>/dev/null \
+        |& openssl x509 -noout -text \
+        | grep -A1 "Subject Alternative Name" \
+        | sed -E 's/,?\s+(DNS|IP)/\n\t\t\1/g'
+            X509v3 Subject Alternative Name:
+
+                DNS:localhost
+                DNS:ziti-controller
+                DNS:ziti-controller-ctrl
+                DNS:ziti-controller-ctrl.ziti
+                DNS:ziti-controller-ctrl.ziti.svc
+                DNS:ziti-controller-ctrl.ziti.svc.cluster
+                DNS:ziti-controller-ctrl.ziti.svc.cluster.local
+                DNS:ctrl.my-ziti-cluster.example.com
+                DNS:ziti-controller-client
+                DNS:ziti-controller-client.ziti
+                DNS:ziti-controller-client.ziti.svc
+                DNS:ziti-controller-client.ziti.svc.cluster
+                DNS:ziti-controller-client.ziti.svc.cluster.local
+                DNS:client.my-ziti-cluster.example.com
+                DNS:ziti-controller-mgmt
+                DNS:ziti-controller-mgmt.ziti
+                DNS:ziti-controller-mgmt.ziti.svc
+                DNS:ziti-controller-mgmt.ziti.svc.cluster
+                DNS:ziti-controller-mgmt.ziti.svc.cluster.local
+                DNS:management.my-ziti-cluster.example.com
+                IP Address:127.0.0.1
+    ```
 
 1. Run `ziti` CLI remotely in the admin container. Change the command to `bash` to log in interactively. Then run `zitiLogin`.
 
@@ -159,13 +192,27 @@ Builds out a Linode Kubernetes Engine cluster with
     | jq --slurp 
     ```
 
+1. Login `ziti` CLI.
+
+    ```bash
+    kubectl get secrets "ziti-controller-admin-secret" \
+        --namespace ziti \
+        --output go-template='{{index .data "admin-password" | base64decode }}' \
+    | xargs ziti edge login management.my-ziti-cluster.example.com:443 \
+        --yes \
+        --username admin \
+        --password
+    ```
+
 1. Forward local port 1280/tcp to the Ziti management API.
+
+    You have the option to delete the management API Ingress and access it through a kubectl port forward or a Ziti service. The Ziti service address needs to match one of the DNS SANs on the controller's server certificate.
 
     ```bash
      kubectl -n ziti-controller port-forward services/ziti-controller-mgmt 1280:443 &>/tmp/k.log &
      ```
 
-1. Login `ziti` CLI.
+1. Login `ziti` CLI with an alternative URL.
 
     ```bash
     ziti edge login localhost:1280 \
@@ -181,6 +228,9 @@ Builds out a Linode Kubernetes Engine cluster with
     ```
 
 1. Visit management API reference in a web browser. https://localhost:1280/edge/management/v1/docs
+
+
+1. 
 
 ## Test Ziti Demo Service
 

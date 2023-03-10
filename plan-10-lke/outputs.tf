@@ -80,10 +80,6 @@ output "ziti_namespace" {
   value = "${var.ziti_namespace}"
 }
 
-# output "router1_jwt" {
-#   value = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
-# }
-
 output "ziti_admin_user" {
   sensitive = true
   value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
