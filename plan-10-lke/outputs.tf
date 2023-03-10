@@ -21,7 +21,7 @@ output "kubeconfig" {
 
 resource "local_sensitive_file" "kubeconfig" {
   depends_on   = [linode_lke_cluster.linode_lke]
-  filename     = "./kube-config"
+  filename     = "../kube-config"
   content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
   file_permission = 0600
 }
@@ -56,9 +56,9 @@ resource "local_sensitive_file" "kubeconfig" {
 #   value = var.ctrl_port
 # }
 
-# output "domain_name" {
-#    value = var.domain_name
-# }
+output "domain_name" {
+   value = var.domain_name
+}
 
 # output "email" {
 #    value = var.email
@@ -68,20 +68,28 @@ resource "local_sensitive_file" "kubeconfig" {
 #    value = var.tags
 # }
 
-# output "ziti_controller_mgmt" {
-#    value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
-# }
+output "ziti_controller_mgmt" {
+    value = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}/edge/management/v1"
+}
+
+output "ziti_controller_ctrl" {
+    value = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_namespace}.svc:${var.ctrl_port}"
+}
+
+output "ziti_namespace" {
+  value = "${var.ziti_namespace}"
+}
 
 # output "router1_jwt" {
 #   value = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
 # }
 
-# output "admin_user" {
-#   sensitive = true
-#   value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
-# }
+output "ziti_admin_user" {
+  sensitive = true
+  value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+}
 
-# output "admin_password" {
-#   sensitive = true
-#   value = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
-# }
+output "ziti_admin_password" {
+  sensitive = true
+  value = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
+}

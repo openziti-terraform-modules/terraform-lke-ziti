@@ -26,29 +26,7 @@ terraform {
             source  = "hashicorp/kubernetes"
             version = "2.0.1"
         }
-        # download: https://github.com/qrkourier/terraform-provider-restapi/releases/latest
-        # install: ~/
-        openziti = {
-            source = "qrkourier/restapi"
-            version = "~> 1.20.0"
-        }
     }
-}
-
-locals {
-    admin_user = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
-    admin_password = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
-}
-
-provider openziti {
-    uri                   = "https://${var.mgmt_domain_name}.${var.domain_name}:${var.mgmt_port}/edge/management/v1"
-    debug                 = true
-    create_returns_object = true
-    write_returns_object  = false
-    insecure              = false
-    cacerts_file          = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
-    ziti_username         = "${local.admin_user}"
-    ziti_password         = "${local.admin_password}"
 }
 
 provider "linode" {
@@ -257,68 +235,6 @@ resource "null_resource" "wait_for_dns" {
                 -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
         EOF
     }
-}
-
-# from this point onward we have everything we need to use the Ziti mgmt API:
-# DNS, CA certs, and username/password. Subsequent Ziti restapi_object resources
-# should depend on this or any following restapi_object to ensure these
-# prerequesites are satisfied.
-resource "restapi_object" "router1" {
-    depends_on  = [
-        null_resource.wait_for_dns,
-        local_file.ctrl_plane_cas,
-        data.kubernetes_secret.admin_secret
-    ]
-    debug       = true
-    provider    = openziti
-    path        = "/edge-routers"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
-        {
-            "name": "router1",
-            "isTunnelerEnabled": true,
-            "roleAttributes": [
-                "public-routers"
-            ]
-        }
-    EOF
-}
-
-# the management API doesn't return the created or updated properties, and this
-# plugin isn't yet smart enough to go look up the new state in the API by
-# following the link to the ID of the resource. So a pair of Terraform
-# resource+data source are necessary to read the changed state.
-# data "restapi_object" "router1" {
-#     depends_on = [restapi_object.router1]
-#     provider = openziti
-#     path = "/edge-routers"
-#     search_key = "name"
-#     search_value = "router1"
-#     results_key = "data"
-# }
-
-data "template_file" "ziti_router1_values" {
-    template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
-    vars = {
-        ctrl_endpoint = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_namespace}.svc:${var.ctrl_port}"
-        # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
-        router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
-        router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
-        jwt = "${ try(jsondecode(restapi_object.router1.api_response).data.enrollmentJwt, "non_empty_string") }"
-    }
-}
-
-resource "helm_release" "ziti_router1" {
-    depends_on = [restapi_object.router1]
-    name = var.router1_release
-    namespace = helm_release.ziti_controller.namespace
-    repository = "https://openziti.github.io/helm-charts"
-    chart = "ziti-router"
-    version = "<0.3"
-    wait = false
-    values = [data.template_file.ziti_router1_values.rendered]
 }
 
 # resource "null_resource" "kubeconfig_ansible_playbook" {
