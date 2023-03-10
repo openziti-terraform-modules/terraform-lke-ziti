@@ -290,14 +290,14 @@ resource "restapi_object" "router1" {
 # plugin isn't yet smart enough to go look up the new state in the API by
 # following the link to the ID of the resource. So a pair of Terraform
 # resource+data source are necessary to read the changed state.
-data "restapi_object" "router1" {
-    depends_on = [restapi_object.router1]
-    provider = openziti
-    path = "/edge-routers"
-    search_key = "name"
-    search_value = "router1"
-    results_key = "data"
-}
+# data "restapi_object" "router1" {
+#     depends_on = [restapi_object.router1]
+#     provider = openziti
+#     path = "/edge-routers"
+#     search_key = "name"
+#     search_value = "router1"
+#     results_key = "data"
+# }
 
 data "template_file" "ziti_router1_values" {
     template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
@@ -306,7 +306,7 @@ data "template_file" "ziti_router1_values" {
         # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
         router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
         router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
-        jwt = "${ try(jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt, "alreadyEnrolled") }"
+        jwt = "${ try(jsondecode(restapi_object.router1.api_response).data.enrollmentJwt, "non_empty_string") }"
     }
 }
 
