@@ -130,9 +130,10 @@ resource "restapi_object" "client_identity" {
         {
             "name": "edge-client",
             "type": "Device",
+            "isAdmin": false,
             "enrollment": {
-                "ott": true,
-            }
+                "ott": true
+            },
             "roleAttributes": [
                 "webhook-clients",
                 "k8sapi-clients",
@@ -144,12 +145,12 @@ resource "restapi_object" "client_identity" {
 
 resource "local_file" "client_identity" {
     depends_on = [restapi_object.client_identity]
-    content  = "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.enrollment.ott.jwt}"
+    content  = jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt
     # filename = "${path.root}/.terraform/tmp/edge-client.jwt"
     filename = "/tmp/lke-edge-client.jwt"
 }
 
-resource "restapi_object" "webhook_identity" {
+resource "restapi_object" "webhook_server_identity" {
     provider    = restapi
     path        = "/identities"
     read_search = {
@@ -159,9 +160,10 @@ resource "restapi_object" "webhook_identity" {
         {
             "name": "webhook-server1",
             "type": "Device",
+            "isAdmin": false,
             "enrollment": {
-                "ott": true,
-            }
+                "ott": true
+            },
             "roleAttributes": [
                 "webhook-servers"
             ]
@@ -171,30 +173,38 @@ resource "restapi_object" "webhook_identity" {
 
 resource "null_resource" "enroll_webhook_server_identity" {
     depends_on = [
-        restapi_object.webhook_identity
+        restapi_object.webhook_server_identity
     ]
     provisioner "local-exec" {
         command = <<-EOF
-            ziti edge enroll --out ${path.root}/.terraform/tmp/webhook-server.json
+            ziti edge enroll \
+                --jwt <(echo '${jsondecode(restapi_object.webhook_server_identity.api_response).data.enrollment.ott.jwt}') \
+                --out ${path.root}/.terraform/tmp/webhook-server.json
         EOF
-        environment = {}
+        interpreter = ["bash", "-c"]
     }
+}
+
+data "local_file" "webhook_server_identity" {
+    depends_on = [null_resource.enroll_webhook_server_identity]
+    filename = "${path.root}/.terraform/tmp/webhook-server.json"
 }
 
 resource "helm_release" "webhook_server" {
     depends_on   = [null_resource.enroll_webhook_server_identity]
     chart        = "httpbin"
-    version      = "<0.2"
+    version      = ">=0.1.8"
     repository   = "https://openziti.github.io/helm-charts"
-    name         = "webhook_server"
+    name         = "webhook-server"
     namespace    = "default"
     set {
         name = "zitiServiceName"
         value = "webhook-service"
     }
-    set {
-        name = "zitiIdentity"
-        value = file("${path.root}/.terraform/tmp/webhook-server.json")
+    set_sensitive {
+        name = "zitiIdentityEncoding"
+        value = base64encode(data.local_file.webhook_server_identity.content)
+        type  = "auto"
     }
 }
 
@@ -209,6 +219,7 @@ data "restapi_object" "intercept_v1_config_type" {
 
 
 resource "restapi_object" "webhook_intercept_config" {
+    depends_on = [data.restapi_object.intercept_v1_config_type]
     provider    = restapi
     path        = "/configs"
     read_search = {
@@ -221,7 +232,8 @@ resource "restapi_object" "webhook_intercept_config" {
             "data": {
                 "protocols": ["tcp"],
                 "addresses": ["webhook.ziti"], 
-                "portRanges": [{"low":80, "high":80}]}
+                "portRanges": [{"low":80, "high":80}]
+            }
         }
     EOF
 }
@@ -251,10 +263,12 @@ resource "restapi_object" "webhook_host_config" {
                 "address": "httpbin",
                 "port": 8080
             }
+        }
     EOF
 }
 
 resource "restapi_object" "webhook_service" {
+    depends_on = [restapi_object.webhook_intercept_config,restapi_object.webhook_host_config]
     provider    = restapi
     path        = "/services"
     read_search = {
@@ -265,8 +279,8 @@ resource "restapi_object" "webhook_service" {
             "name": "webhook-service",
             "encryptionRequired": true,
             "configs": [
-                "webhook-intercept-config",
-                "webhook-host-config"
+                "${jsondecode(restapi_object.webhook_intercept_config.api_response).data.id}",
+                "${jsondecode(restapi_object.webhook_host_config.api_response).data.id}"
             ],
             "roleAttributes": [
                 "webhook-services"
@@ -276,6 +290,7 @@ resource "restapi_object" "webhook_service" {
 }
 
 resource "restapi_object" "webhook_bind_service_policy" {
+    depends_on = [restapi_object.webhook_service]
     provider    = restapi
     path        = "/service-policies"
     read_search = {
@@ -291,13 +306,14 @@ resource "restapi_object" "webhook_bind_service_policy" {
             ],
             "postureCheckRoles": [],
             "serviceRoles": [
-                "@webhook-service"
+                "@${jsondecode(restapi_object.webhook_service.api_response).data.id}"
             ]
         }
     EOF
 }
 
 resource "restapi_object" "webhook_dial_service_policy" {
+    depends_on = [restapi_object.webhook_service]
     provider    = restapi
     path        = "/service-policies"
     read_search = {
@@ -313,7 +329,7 @@ resource "restapi_object" "webhook_dial_service_policy" {
             ],
             "postureCheckRoles": [],
             "serviceRoles": [
-                "@webhook-service"
+                "@${jsondecode(restapi_object.webhook_service.api_response).data.id}"
             ]
         }
     EOF
@@ -334,7 +350,7 @@ resource "restapi_object" "public_edge_router_policy" {
             ],
             "identityRoles": [
                 "#all"
-            ],
+            ]
         }
     EOF
 }
@@ -354,7 +370,7 @@ resource "restapi_object" "public_service_edge_router_policy" {
             ],
             "serviceRoles": [
                 "#all"
-            ],
+            ]
         }
     EOF
 }
