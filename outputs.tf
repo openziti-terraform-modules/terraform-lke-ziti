@@ -71,3 +71,17 @@ resource "local_sensitive_file" "kubeconfig" {
 # output "ziti_controller_mgmt" {
 #    value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
 # }
+
+# output "router1_jwt" {
+#   value = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
+# }
+
+# output "admin_user" {
+#   sensitive = true
+#   value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+# }
+
+# output "admin_password" {
+#   sensitive = true
+#   value = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
+# }

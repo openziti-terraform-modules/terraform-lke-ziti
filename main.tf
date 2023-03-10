@@ -26,11 +26,18 @@ terraform {
             source  = "hashicorp/kubernetes"
             version = "2.0.1"
         }
+        # download: https://github.com/qrkourier/terraform-provider-restapi/releases/latest
+        # install: ~/
         openziti = {
             source = "qrkourier/restapi"
             version = "~> 1.20.0"
         }
     }
+}
+
+locals {
+    admin_user = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+    admin_password = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
 }
 
 provider openziti {
@@ -40,30 +47,17 @@ provider openziti {
     write_returns_object  = false
     insecure              = false
     cacerts_file          = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
-    ziti_username         = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
-    ziti_password         = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
+    ziti_username         = "${local.admin_user}"
+    ziti_password         = "${local.admin_password}"
 }
 
 provider "linode" {
     token = var.token
 }
 
-resource "linode_lke_cluster" "linode_lke" {
-    label       = var.label
-    k8s_version = var.k8s_version
-    region      = var.region
-    tags        = var.tags
-
-    dynamic "pool" {
-        for_each = var.pools
-        content {
-            type  = pool.value["type"]
-            count = pool.value["count"]
-        }
-    }
-}
-
 provider "helm" {
+    repository_config_path = "${path.root}/.helm/repositories.yaml" 
+    repository_cache       = "${path.root}/.helm"
     kubernetes {
         host                   = yamldecode(base64decode(linode_lke_cluster.linode_lke.kubeconfig)).clusters[0].cluster.server
         token                  = yamldecode(base64decode(linode_lke_cluster.linode_lke.kubeconfig)).users[0].user.token
@@ -82,6 +76,21 @@ provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-ma
     token                  = yamldecode(base64decode(linode_lke_cluster.linode_lke.kubeconfig)).users[0].user.token
     cluster_ca_certificate = base64decode(yamldecode(base64decode(linode_lke_cluster.linode_lke.kubeconfig)).clusters[0].cluster.certificate-authority-data)
     load_config_file       = false
+}
+
+resource "linode_lke_cluster" "linode_lke" {
+    label       = var.label
+    k8s_version = var.k8s_version
+    region      = var.region
+    tags        = var.tags
+
+    dynamic "pool" {
+        for_each = var.pools
+        content {
+            type  = pool.value["type"]
+            count = pool.value["count"]
+        }
+    }
 }
 
 module "cert_manager" {
@@ -185,16 +194,24 @@ resource "helm_release" "ziti_controller" {
 }
 
 resource "local_file" "ctrl_plane_cas" {
-  content  = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
-  filename = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
+    depends_on = [helm_release.ziti_controller]
+    content  = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
+    filename = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
 }
 
 data "kubernetes_secret" "admin_secret" {
+    depends_on = [helm_release.ziti_controller]
     metadata {
         name = "${helm_release.ziti_controller.name}-admin-secret"
         namespace = helm_release.ziti_controller.namespace
     }
 }
+
+# resource "local_file" "admin_secret" {
+#     depends_on = [helm_release.ziti_controller]
+#     content  = yamlencode(data.kubernetes_secret.admin_secret.data)
+#     filename = "${path.root}/.terraform/tmp/admin-secret.yml"
+# }
 
 data "kubernetes_config_map" "ctrl_trust_bundle" {
     metadata {
@@ -230,9 +247,9 @@ resource "helm_release" "ziti_console" {
 
 resource "null_resource" "wait_for_dns" {
     depends_on = [linode_domain_record.wildcard_record]
-    triggers = {
-        always_run = "${timestamp()}"
-    }
+    # triggers = {
+    #     always_run = "${timestamp()}"
+    # }
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
@@ -249,7 +266,8 @@ resource "null_resource" "wait_for_dns" {
 resource "restapi_object" "router1" {
     depends_on  = [
         null_resource.wait_for_dns,
-        local_file.ctrl_plane_cas
+        local_file.ctrl_plane_cas,
+        data.kubernetes_secret.admin_secret
     ]
     debug       = true
     provider    = openziti
@@ -288,31 +306,32 @@ data "template_file" "ziti_router1_values" {
         # ctrl_endpoint = "${var.ctrl_domain_name}.${var.domain_name}:${var.ctrl_port}"
         router1_edge = "${var.router1_edge_domain_name}.${var.domain_name}"
         router1_transport = "${var.router1_transport_domain_name}.${var.domain_name}"
-        jwt = jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt
+        jwt = "${ try(jsondecode(data.restapi_object.router1.api_response).data.enrollmentJwt, "alreadyEnrolled") }"
     }
 }
 
 resource "helm_release" "ziti_router1" {
-    depends_on = [data.restapi_object.router1]
+    depends_on = [restapi_object.router1]
     name = var.router1_release
     namespace = helm_release.ziti_controller.namespace
     repository = "https://openziti.github.io/helm-charts"
     chart = "ziti-router"
     version = "<0.3"
+    wait = false
     values = [data.template_file.ziti_router1_values.rendered]
 }
 
-resource "null_resource" "kubeconfig_ansible_playbook" {
-    depends_on = [
-        linode_lke_cluster.linode_lke,
-        restapi_object.k8sapi_service
-    ]
-    provisioner "local-exec" {
-        command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
-        EOF
-        environment = {
-            K8S_AUTH_KUBECONFIG = "../kube-config"
-        }
-    }
-}
+# resource "null_resource" "kubeconfig_ansible_playbook" {
+#     depends_on = [
+#         linode_lke_cluster.linode_lke,
+#         restapi_object.k8sapi_service
+#     ]
+#     provisioner "local-exec" {
+#         command = <<-EOF
+#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+#         EOF
+#         environment = {
+#             K8S_AUTH_KUBECONFIG = "../kube-config"
+#         }
+#     }
+# }

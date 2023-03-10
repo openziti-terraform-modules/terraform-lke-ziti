@@ -42,3 +42,5 @@ docs/_build
 
 # temp charts bind
 charts/
+
+.helm/
