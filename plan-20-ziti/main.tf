@@ -22,11 +22,9 @@ terraform {
             source  = "hashicorp/kubernetes"
             version = "2.0.1"
         }
-        # download: https://github.com/qrkourier/terraform-provider-restapi/releases/latest
-        # install: ~/
-        openziti = {
+        restapi = {
             source = "qrkourier/restapi"
-            version = "~> 1.20.0"
+            version = "~> 1.21.0"
         }
     }
 }
@@ -38,12 +36,9 @@ data "terraform_remote_state" "lke_state" {
     }
 }
 
-provider openziti {
+provider restapi {
     uri                   = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt}"
     debug                 = true
-    create_returns_object = true
-    write_returns_object  = false
-    insecure              = false
     cacerts_file          = "${path.root}/../plan-10-lke/.terraform/tmp/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
@@ -78,7 +73,7 @@ provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-ma
 # prerequesites are satisfied.
 resource "restapi_object" "router1" {
     debug       = true
-    provider    = openziti
+    provider    = restapi
     path        = "/edge-routers"
     read_search = {
         results_key = "data"
@@ -94,13 +89,9 @@ resource "restapi_object" "router1" {
     EOF
 }
 
-# the management API doesn't return the created or updated properties, and this
-# plugin isn't yet smart enough to go look up the new state in the API by
-# following the link to the ID of the resource. So a pair of Terraform
-# resource+data source are necessary to read the changed state.
 # data "restapi_object" "router1" {
 #     depends_on = [restapi_object.router1]
-#     provider = openziti
+#     provider    = restapi
 #     path = "/edge-routers"
 #     search_key = "name"
 #     search_value = "router1"
