@@ -300,7 +300,25 @@ This plan will create some OpenZiti Services:
 
 ## Apply the Client Terraform Plan
 
-This plan will help you get started using OpenZiti Services with a Tunneler. 
+This plan will help you get started using OpenZiti Services with a Tunneler.
+
+1. Initialize the workspace.
+
+    ```bash
+    (cd ./plan-40-client/; terraform init;)
+    ```
+
+1. Perform a dry run.
+
+    ```bash
+    (cd ./plan-40-client/; terraform plan;)
+    ```
+
+1. Apply the plan.
+
+    ```bash
+    (cd ./plan-40-client/; terraform apply;)
+    ```
 
 1. Add the demo client identity to Ziti Desktop Edge. The JWT is saved in `/tmp/edge-client1.jwt`.
 
@@ -327,12 +345,17 @@ This plan will help you get started using OpenZiti Services with a Tunneler.
 
 ## Start Over with Fresh Ziti
 
-You can tear down the cluster with:
+Destroy the Terraform Plans in reverse order if you plan on re-using the directories. That way you won't have any problems with leftover Terraform State.
+
+You can tear down the cluster like this.
 
 ```bash
+(cd ./plan-40-client/; terraform destroy;)
+(cd ./plan-30-services/; terraform destroy;)
+(cd ./plan-20-router/; terraform destroy;)
 (cd ./plan-10-k8s/; terraform destroy;)
 ```
 
-Remember to forget your identity. The OpenZiti Identity named "edge-client" in your Tunneler, that is.
+In your Tunneler, i.e. Desktop Edge, remember to forget your identity. The OpenZiti Identity named "edge-client" in your Tunneler, that is.
 
 If you uninstall `ingress-nginx` then your LoadBalancer public IP is released. You'll get a new one if you reinstall `ingress-nginx` with the first Kubernetes TF plan, but you'll have to wait for DNS to re-propagate.
