@@ -164,10 +164,10 @@ resource "helm_release" "ziti_controller" {
     ]
     namespace        = var.ziti_namespace
     name             = "ziti-controller"
-    version          = "<0.2"
-    # repository       = "https://openziti.github.io/helm-charts"
-    # chart            = "ziti-controller"
-    chart = "/home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-controller"
+    # version          = "< 0.2"
+    version          = "~> 0.1.11"
+    repository       = "https://openziti.github.io/helm-charts"
+    chart            = "ziti-controller"
     values           = [data.template_file.ziti_controller_values.rendered]
 }
 
