@@ -10,17 +10,17 @@ terraform {
         local = {
             version = "~> 2.1"
         }
-        kubectl = {
-            source  = "gavinbunney/kubectl"
-            version = "1.13.0"
-        }
+        # kubectl = {
+        #     source  = "gavinbunney/kubectl"
+        #     version = "1.13.0"
+        # }
+        # kubernetes = {
+        #     source  = "hashicorp/kubernetes"
+        #     version = "2.0.1"
+        # }
         helm = {
             source  = "hashicorp/helm"
             version = "2.5.0"
-        }
-        kubernetes = {
-            source  = "hashicorp/kubernetes"
-            version = "2.0.1"
         }
         restapi = {
             source = "qrkourier/restapi"
@@ -54,18 +54,18 @@ provider "helm" {
     }
 }
 
-provider "kubernetes" {
-    host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
-    token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
-    cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
-}
+# provider "kubernetes" {
+#     host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
+#     token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
+#     cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+# }
 
-provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-manager module
-    host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
-    token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
-    cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
-    load_config_file       = false
-}
+# provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-manager module
+#     host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
+#     token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
+#     cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+#     load_config_file       = false
+# }
 
 # from this point onward we have everything we need to use the Ziti mgmt API:
 # DNS, CA certs, and username/password. Subsequent Ziti restapi_object resources
@@ -75,16 +75,14 @@ resource "restapi_object" "router1" {
     debug       = true
     provider    = restapi
     path        = "/edge-routers"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "router1",
             "isTunnelerEnabled": true,
             "roleAttributes": [
                 "public-routers",
-                "mgmt-servers"
+                "mgmt-hosts",
+                "kentest"
             ]
         }
     EOF
@@ -121,19 +119,26 @@ resource "helm_release" "ziti_router1" {
     values = [data.template_file.ziti_router1_values.rendered]
 }
 
+# find the id of the Router's tunnel identity so we can declare it in the next
+# resource for import and ongoing PATCH management
+data "restapi_object" "router1_identity_lookup" {
+    provider     = restapi
+    path         = "/identities"
+    search_key   = "name"
+    search_value = "router1"
+}
+
 resource "restapi_object" "router1_identity" {
-    debug   = true
-    provider    = restapi
-    path        = "/identities"
-    read_search = {
-        results_key = "data"
-    }
-    update_method = "patch"
+    depends_on    = [data.restapi_object.router1_identity_lookup]
+    debug         = true
+    provider      = restapi
+    path          = "/identities"
+    update_method = "PATCH"
     data = <<-EOF
         {
-            "id": "aRdvIIfCA7",
+            "id": "${jsondecode(data.restapi_object.router1_identity_lookup.api_response).data.id}",
             "roleAttributes": [
-                "mgmt-servers6"
+                "mgmt-servers"
             ]
         }
     EOF
@@ -142,10 +147,7 @@ resource "restapi_object" "router1_identity" {
 resource "restapi_object" "client_identity" {
     provider    = restapi
     path        = "/identities"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "edge-client",
             "type": "Device",
@@ -173,10 +175,7 @@ resource "restapi_object" "mgmt_intercept_config" {
     depends_on = [data.restapi_object.intercept_v1_config_type]
     provider    = restapi
     path        = "/configs"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "mgmt-intercept-config",
             "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
@@ -192,10 +191,7 @@ resource "restapi_object" "mgmt_intercept_config" {
 resource "restapi_object" "mgmt_host_config" {
     provider    = restapi
     path        = "/configs"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "mgmt-host-config",
             "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
@@ -215,10 +211,7 @@ resource "restapi_object" "mgmt_service" {
     ]
     provider    = restapi
     path        = "/services"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "mgmt-service",
             "encryptionRequired": true,
@@ -237,16 +230,13 @@ resource "restapi_object" "mgmt_bind_service_policy" {
     depends_on = [restapi_object.mgmt_service]
     provider    = restapi
     path        = "/service-policies"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "mgmt-bind-policy",
             "type": "Bind",
             "semantic": "AnyOf",
             "identityRoles": [
-                "#mgmt-servers"
+                "#mgmt-hosts"
             ],
             "postureCheckRoles": [],
             "serviceRoles": [
@@ -260,10 +250,7 @@ resource "restapi_object" "mgmt_dial_service_policy" {
     depends_on = [restapi_object.mgmt_service]
     provider    = restapi
     path        = "/service-policies"
-    read_search = {
-        results_key = "data"
-    }
-    data = <<-EOF
+     data = <<-EOF
         {
             "name": "mgmt-dial-policy",
             "type": "Dial",
@@ -279,52 +266,49 @@ resource "restapi_object" "mgmt_dial_service_policy" {
     EOF
 }
 
-resource "restapi_object" "webhook_server_identity" {
+resource "restapi_object" "webhook_host_identity" {
     provider    = restapi
     path        = "/identities"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
-            "name": "webhook-server1",
+            "name": "webhook-host",
             "type": "Device",
             "isAdmin": false,
             "enrollment": {
                 "ott": true
             },
             "roleAttributes": [
-                "webhook-servers"
+                "webhook-hosts"
             ]
         }
     EOF
 }
 
-resource "null_resource" "enroll_webhook_server_identity" {
+resource "null_resource" "enroll_webhook_host_identity" {
     depends_on = [
-        restapi_object.webhook_server_identity
+        restapi_object.webhook_host_identity
     ]
     provisioner "local-exec" {
         command = <<-EOF
             ziti edge enroll \
-                --jwt <(echo '${jsondecode(restapi_object.webhook_server_identity.api_response).data.enrollment.ott.jwt}') \
-                --out ${path.root}/.terraform/tmp/webhook-server.json
+                --jwt <(echo '${jsondecode(restapi_object.webhook_host_identity.api_response).data.enrollment.ott.jwt}') \
+                --out ${path.root}/.terraform/tmp/webhook-host.json
         EOF
         interpreter = ["bash", "-c"]
     }
 }
 
-data "local_file" "webhook_server_identity" {
-    depends_on = [null_resource.enroll_webhook_server_identity]
-    filename = "${path.root}/.terraform/tmp/webhook-server.json"
+data "local_file" "webhook_host_identity" {
+    depends_on = [null_resource.enroll_webhook_host_identity]
+    filename = "${path.root}/.terraform/tmp/webhook-host.json"
 }
 
-resource "helm_release" "webhook_server" {
-    depends_on   = [null_resource.enroll_webhook_server_identity]
+resource "helm_release" "webhook_host" {
+    depends_on   = [null_resource.enroll_webhook_host_identity]
     chart        = "httpbin"
     version      = ">=0.1.8"
     repository   = "https://openziti.github.io/helm-charts"
-    name         = "webhook-server"
+    name         = "webhook-host"
     namespace    = "default"
     set {
         name = "zitiServiceName"
@@ -332,28 +316,23 @@ resource "helm_release" "webhook_server" {
     }
     set_sensitive {
         name = "zitiIdentityEncoding"
-        value = base64encode(data.local_file.webhook_server_identity.content)
+        value = base64encode(data.local_file.webhook_host_identity.content)
         type  = "auto"
     }
 }
 
 data "restapi_object" "intercept_v1_config_type" {
-    provider    = restapi
-    path = "/config-types"
-    search_key = "name"
+    provider     = restapi
+    path         = "/config-types"
+    search_key   = "name"
     search_value = "intercept.v1"
-    results_key = "data"
-    debug = true
 }
 
 
 resource "restapi_object" "webhook_intercept_config" {
-    depends_on = [data.restapi_object.intercept_v1_config_type]
+    depends_on  = [data.restapi_object.intercept_v1_config_type]
     provider    = restapi
     path        = "/configs"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "webhook-intercept-config",
@@ -368,21 +347,16 @@ resource "restapi_object" "webhook_intercept_config" {
 }
 
 data "restapi_object" "host_v1_config_type" {
-    provider    = restapi
-    path = "/config-types"
-    search_key = "name"
+    provider     = restapi
+    path         = "/config-types"
+    search_key   = "name"
     search_value = "host.v1"
-    results_key = "data"
-    debug = true
 }
 
 
 resource "restapi_object" "webhook_host_config" {
     provider    = restapi
     path        = "/configs"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "webhook-host-config",
@@ -400,9 +374,6 @@ resource "restapi_object" "webhook_service" {
     depends_on = [restapi_object.webhook_intercept_config,restapi_object.webhook_host_config]
     provider    = restapi
     path        = "/services"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "webhook-service",
@@ -422,16 +393,13 @@ resource "restapi_object" "webhook_bind_service_policy" {
     depends_on = [restapi_object.webhook_service]
     provider    = restapi
     path        = "/service-policies"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "webhook-bind-policy",
             "type": "Bind",
             "semantic": "AnyOf",
             "identityRoles": [
-                "#webhook-servers"
+                "#webhook-hosts"
             ],
             "postureCheckRoles": [],
             "serviceRoles": [
@@ -445,9 +413,6 @@ resource "restapi_object" "webhook_dial_service_policy" {
     depends_on = [restapi_object.webhook_service]
     provider    = restapi
     path        = "/service-policies"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "webhook-dial-policy",
@@ -467,9 +432,6 @@ resource "restapi_object" "webhook_dial_service_policy" {
 resource "restapi_object" "public_edge_router_policy" {
     provider    = restapi
     path        = "/edge-router-policies"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "public-routers",
@@ -487,9 +449,6 @@ resource "restapi_object" "public_edge_router_policy" {
 resource "restapi_object" "public_service_edge_router_policy" {
     provider    = restapi
     path        = "/service-edge-router-policies"
-    read_search = {
-        results_key = "data"
-    }
     data = <<-EOF
         {
             "name": "public-routers",
