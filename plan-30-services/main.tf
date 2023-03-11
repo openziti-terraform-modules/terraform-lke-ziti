@@ -12,7 +12,7 @@ terraform {
         }
         restapi = {
             source = "qrkourier/restapi"
-            version = "~> 1.21.0"
+            version = "~> 1.22.0"
         }
     }
 }
@@ -311,7 +311,7 @@ resource "null_resource" "enroll_webhook_host_identity" {
         command = <<-EOF
             ziti edge enroll \
                 --jwt <(echo '${jsondecode(restapi_object.webhook_host_identity.api_response).data.enrollment.ott.jwt}') \
-                --out ${path.root}/.terraform/tmp/webhook-host.json
+                --out ${path.root}/.terraform/webhook-host.json
         EOF
         interpreter = ["bash", "-c"]
     }
@@ -319,7 +319,7 @@ resource "null_resource" "enroll_webhook_host_identity" {
 
 data "local_file" "webhook_host_identity" {
     depends_on = [null_resource.enroll_webhook_host_identity]
-    filename = "${path.root}/.terraform/tmp/webhook-host.json"
+    filename = "${path.root}/.terraform/webhook-host.json"
 }
 
 resource "helm_release" "webhook_host" {
@@ -358,7 +358,7 @@ resource "restapi_object" "webhook_intercept_config" {
             "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
             "data": {
                 "protocols": ["tcp"],
-                "addresses": ["webhook2.ziti"], 
+                "addresses": ["webhook.ziti"], 
                 "portRanges": [{"low":80, "high":80}]
             }
         }

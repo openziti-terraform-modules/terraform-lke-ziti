@@ -16,7 +16,7 @@ terraform {
         }
         restapi = {
             source = "qrkourier/restapi"
-            version = "~> 1.21.0"
+            version = "~> 1.22.0"
         }
     }
 }
