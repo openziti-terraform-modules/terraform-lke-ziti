@@ -25,7 +25,7 @@ data "terraform_remote_state" "lke_state" {
 }
 
 provider restapi {
-    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
+    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
     cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
@@ -324,7 +324,7 @@ data "local_file" "webhook_host_identity" {
 
 resource "helm_release" "webhook_host" {
     depends_on   = [null_resource.enroll_webhook_host_identity]
-    chart        = "httpbin"
+    chart        = "${var.ziti_charts}/httpbin"
     version      = ">=0.1.8"
     repository   = "https://openziti.github.io/helm-charts"
     name         = "webhook-host"

@@ -45,6 +45,12 @@ variable "pools" {
     ]
 }
 
+variable "ziti_charts" {
+    description = "Filesystem path to source OpenZiti Helm Charts instead of Helm repo"
+    type = string
+    default = ""
+}
+
 variable "console_domain_name" {
     description = "The subdomain name to use for Ziti console"
     default     = "console"  # wildcard DNS record resolves all names to the Nodebalancer
@@ -67,7 +73,9 @@ variable "mgmt_domain_name" {
 
 variable "ziti_console_release" {
     default = "ziti-console"
+    description = "Name of Helm release for OpenZiti Console"
 }
+
 variable "cluster_issuer_name" {
     description = "name of the cluster-wide certificate issuer for Let's Encrypt"
     default     = "cert-manager-staging"
@@ -90,7 +98,7 @@ variable "client_port" {
 }
 
 variable "mgmt_port" {
-    description = "Ziti Edge mgmt API port for ziti CLI and console"
+    description = "Ziti Edge mgmt API port used by ziti CLI and console"
     default     = 443
 }
 

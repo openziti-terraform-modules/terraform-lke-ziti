@@ -164,40 +164,22 @@ resource "helm_release" "ziti_controller" {
     ]
     namespace        = var.ziti_namespace
     name             = "ziti-controller"
-    # version          = "< 0.2"
-    version          = "~> 0.1.11"
+    version          = "=>0.1.12 <0.2"
+    # version          = "~> 0.1.12"
     repository       = "https://openziti.github.io/helm-charts"
-    chart            = "ziti-controller"
+    chart            = "${var.ziti_charts}/ziti-controller"
     values           = [data.template_file.ziti_controller_values.rendered]
 }
 
-resource "local_file" "ctrl_plane_cas" {
-    depends_on = [helm_release.ziti_controller]
-    content  = "${data.kubernetes_config_map.ctrl_trust_bundle.data["ctrl-plane-cas.crt"]}"
-    filename = "${path.root}/.terraform/tmp/ctrl-plane-cas.crt"
+module "ziti_controller_info" {
+    depends_on = [
+        linode_lke_cluster.linode_lke,
+        helm_release.ziti_controller
+    ]
+    source = "../modules/ziti-controller-k8s-info"
+    ziti_controller_release = helm_release.ziti_controller.name
+    ziti_namespace = helm_release.ziti_controller.namespace
 }
-
-data "kubernetes_secret" "admin_secret" {
-    depends_on = [helm_release.ziti_controller]
-    metadata {
-        name = "${helm_release.ziti_controller.name}-admin-secret"
-        namespace = helm_release.ziti_controller.namespace
-    }
-}
-
-# resource "local_file" "admin_secret" {
-#     depends_on = [helm_release.ziti_controller]
-#     content  = yamlencode(data.kubernetes_secret.admin_secret.data)
-#     filename = "${path.root}/.terraform/tmp/admin-secret.yml"
-# }
-
-data "kubernetes_config_map" "ctrl_trust_bundle" {
-    metadata {
-        name = "${helm_release.ziti_controller.name}-ctrl-plane-cas"
-        namespace = helm_release.ziti_controller.namespace
-    }
-}
-
 
 data "template_file" "ziti_console_values" {
     template = "${file("helm-chart-values/values-ziti-console.yaml")}"
@@ -217,7 +199,7 @@ resource "helm_release" "ziti_console" {
     name             = var.ziti_console_release
     namespace        = var.ziti_namespace
     repository       = "https://openziti.github.io/helm-charts"
-    chart            = "ziti-console"
+    chart            = "${var.ziti_charts}/ziti-console"
     version          = "<0.3"
     values           = [data.template_file.ziti_console_values.rendered]
 }

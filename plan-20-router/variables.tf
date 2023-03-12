@@ -27,3 +27,9 @@ variable "service1_release" {
     description = "Helm release name for service1"
     default = "webhook-server1"
 }
+
+variable "ziti_charts" {
+    description = "Filesystem path to source OpenZiti Helm Charts instead of Helm repo"
+    type = string
+    default = ""
+}

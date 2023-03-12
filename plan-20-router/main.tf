@@ -29,7 +29,7 @@ data "terraform_remote_state" "lke_state" {
 }
 
 provider restapi {
-    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
+    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
     cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
@@ -78,7 +78,7 @@ resource "helm_release" "ziti_router1" {
     name       = var.router1_release
     namespace  = "${data.terraform_remote_state.lke_state.outputs.ziti_namespace}"
     repository = "https://openziti.github.io/helm-charts"
-    chart      = "ziti-router"
+    chart      = "${var.ziti_charts}/ziti-router"
     version    = "<0.3"
     wait       = false  # hooks don't run if wait=true!?
     values     = [data.template_file.ziti_router1_values.rendered]

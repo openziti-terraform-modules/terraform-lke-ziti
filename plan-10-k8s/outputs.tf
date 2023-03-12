@@ -68,7 +68,7 @@ output "domain_name" {
 #    value = var.tags
 # }
 
-output "ziti_controller_external_host" {
+output "ziti_controller_mgmt_external_host" {
     value = "${var.mgmt_domain_name}.${var.domain_name}"
 }
 
@@ -81,15 +81,15 @@ output "ziti_controller_ctrl" {
 }
 
 output "ziti_namespace" {
-  value = "${var.ziti_namespace}"
+    value = "${var.ziti_namespace}"
 }
 
 output "ziti_admin_user" {
-  sensitive = true
-  value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+    sensitive = true
+    value = module.ziti_controller_info.ziti_admin_user
 }
 
 output "ziti_admin_password" {
-  sensitive = true
-  value = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
+    sensitive = true
+    value = module.ziti_controller_info.ziti_admin_password
 }
