@@ -1,8 +1,3 @@
-variable "domain_name" {
-    description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. Default is to inherit and use the same name as the LKE plan."
-    default = null
-}
-
 variable "router1_release" {
     description = "Helm release name for router1"
     default = "ziti-router1"

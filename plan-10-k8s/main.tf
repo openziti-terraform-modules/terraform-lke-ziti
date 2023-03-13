@@ -92,7 +92,10 @@ resource "kubernetes_namespace" ziti {
 }
 
 resource "helm_release" "trust_manager" {
-    depends_on   = [module.cert_manager, kubernetes_namespace.ziti]
+    depends_on   = [
+        module.cert_manager,
+        kubernetes_namespace.ziti
+    ]
     chart      = "trust-manager"
     repository = "https://charts.jetstack.io"
     name       = "trust-manager"
@@ -119,8 +122,7 @@ resource "helm_release" "ingress_nginx" {
     values           = [data.template_file.ingress_nginx_values.rendered]
 }
 
-# discover the external IP of the Nodebalancer provisioned for the ingress-nginx
-# Service
+# find the external IP of the Nodebalancer provisioned for ingress-nginx
 data "kubernetes_service" "ingress_nginx_controller" {
     depends_on   = [helm_release.ingress_nginx]
     metadata {
@@ -131,7 +133,7 @@ data "kubernetes_service" "ingress_nginx_controller" {
 
 resource "linode_domain" "cluster_zone" {
     type      = "master"
-    domain    = var.domain_name
+    domain    = var.cluster_domain_name
     soa_email = var.email
     tags      = var.tags
 }
@@ -144,53 +146,27 @@ resource "linode_domain_record" "wildcard_record" {
     ttl_sec     = var.wildcard_ttl_sec
 }
 
-data "template_file" "ziti_controller_values" {
-    template = "${file("helm-chart-values/values-ziti-controller.yaml")}"
-    vars = {
-        ctrl_port = var.ctrl_port
-        client_port = var.client_port
-        mgmt_port = var.mgmt_port
-        ctrl_domain_name = var.ctrl_domain_name
-        client_domain_name = var.client_domain_name
-        mgmt_domain_name = var.mgmt_domain_name
-        domain_name = var.domain_name
-    }
-}
-
-resource "helm_release" "ziti_controller" {
+module "ziti_controller" {
     depends_on       = [
+        module.cert_manager, 
         helm_release.trust_manager, 
         helm_release.ingress_nginx
     ]
-    namespace        = var.ziti_namespace
-    name             = "ziti-controller"
-    version          = "=>0.1.12 <0.2"
-    # version          = "~> 0.1.12"
-    repository       = "https://openziti.github.io/helm-charts"
-    chart            = "${var.ziti_charts}/ziti-controller"
-    values           = [data.template_file.ziti_controller_values.rendered]
-}
-
-module "ziti_controller_info" {
-    depends_on = [
-        linode_lke_cluster.linode_lke,
-        helm_release.ziti_controller
-    ]
-    source = "../modules/ziti-controller-k8s-info"
-    ziti_controller_release = helm_release.ziti_controller.name
-    ziti_namespace = helm_release.ziti_controller.namespace
+    source = "../modules/ziti-controller-nginx"
+    ziti_charts = var.ziti_charts
+    ziti_controller_release = var.ziti_controller_release
+    ziti_namespace = var.ziti_namespace
+    cluster_domain_name = var.cluster_domain_name
 }
 
 data "template_file" "ziti_console_values" {
     template = "${file("helm-chart-values/values-ziti-console.yaml")}"
     vars = {
         cluster_issuer = var.cluster_issuer_name
-        domain_name = var.domain_name
-        console_domain_name = var.console_domain_name
-        controller_namespace = helm_release.ziti_controller.namespace
-        controller_release = helm_release.ziti_controller.name
+        cluster_domain_name = var.cluster_domain_name
+        controller_namespace = var.ziti_namespace
+        controller_release = var.ziti_controller_release
         console_release = var.ziti_console_release
-        mgmt_port = var.mgmt_port
     }
 }
 
@@ -199,7 +175,7 @@ resource "helm_release" "ziti_console" {
     name             = var.ziti_console_release
     namespace        = var.ziti_namespace
     repository       = "https://openziti.github.io/helm-charts"
-    chart            = "${var.ziti_charts}/ziti-console"
+    chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-console" : "ziti-console"
     version          = "<0.3"
     values           = [data.template_file.ziti_console_values.rendered]
 }
@@ -212,7 +188,7 @@ resource "null_resource" "wait_for_dns" {
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
-                -e client_dns=${var.client_domain_name}.${var.domain_name} \
+                -e client_dns=client.${var.cluster_domain_name} \
                 -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
         EOF
     }

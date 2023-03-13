@@ -6,7 +6,7 @@ variable "email" {
     description = "The email address cert-manager should submit during ACME request to Let's Encrypt for server certs. (required)"
 }
 
-variable "domain_name" {
+variable "cluster_domain_name" {
     description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. (required)"
 }
 
@@ -51,24 +51,9 @@ variable "ziti_charts" {
     default = ""
 }
 
-variable "console_domain_name" {
-    description = "The subdomain name to use for Ziti console"
-    default     = "console"  # wildcard DNS record resolves all names to the Nodebalancer
-}
-
-variable "ctrl_domain_name" {
-    description = "The subdomain name to use for Ziti router Ctrl Plane"
-    default     = "ctrl"     # wildcard DNS record resolves all names to the Nodebalancer
-}
-
-variable "client_domain_name" {
-    description = "The subdomain name to use for Ziti Edge Client API"
-    default     = "client"   # wildcard DNS record resolves all names to the Nodebalancer
-}
-
-variable "mgmt_domain_name" {
-    description = "The subdomain name to use for Ziti Edge Management API"
-    default     = "management"   # wildcard DNS record resolves all names to the Nodebalancer
+variable "ziti_controller_release" {
+    description = "Helm release name for ziti-controller"
+    default = "ziti-controller"
 }
 
 variable "ziti_console_release" {
@@ -87,23 +72,7 @@ variable "cluster_issuer_server" {
     default     = "https://acme-staging-v02.api.letsencrypt.org/directory"
 }
 
-variable "ctrl_port" {
-    description = "Ziti ctrl plane port for routers that's provided by the Ziti controller"
-    default     = 443
-}
-
-variable "client_port" {
-    description = "Ziti Edge client API port for SDK enrollment, auth, discovery"
-    default     = 443
-}
-
-variable "mgmt_port" {
-    description = "Ziti Edge mgmt API port used by ziti CLI and console"
-    default     = 443
-}
-
 variable "ziti_namespace" {
-    description = "Ziti Namespace"
     default     = "ziti"
 }
 

@@ -28,9 +28,14 @@ data "terraform_remote_state" "lke_state" {
     }
 }
 
+resource "local_file" "ctrl_plane_cas" {
+    content  = "${data.terraform_remote_state.lke_state.outputs.ctrl_plane_cas}"
+    filename = "${path.root}/.terraform/ctrl-plane-cas.crt"
+}
+
 provider restapi {
-    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
-    cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
+    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
+    cacerts_file          = "${path.root}/.terraform/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
     debug                 = true
@@ -45,7 +50,6 @@ provider "helm" {
         cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
     }
 }
-
 
 resource "restapi_object" "router1" {
     debug       = true
@@ -66,10 +70,10 @@ resource "restapi_object" "router1" {
 data "template_file" "ziti_router1_values" {
     template = "${file("helm-chart-values/values-ziti-router1.yaml")}"
     vars = {
-        ctrl_endpoint     = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_ctrl}"
-        router1_edge      = "${var.router1_edge_domain_name}.${coalesce(var.domain_name, data.terraform_remote_state.lke_state.outputs.domain_name)}"
-        router1_transport = "${var.router1_transport_domain_name}.${coalesce(var.domain_name, data.terraform_remote_state.lke_state.outputs.domain_name)}"
-        jwt               = "${ try(jsondecode(restapi_object.router1.api_response).data.enrollmentJwt, "dummystring") }"
+        ctrl_endpoint     = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_ctrl_internal_host}:443"
+        router1_edge      = "${var.router1_edge_domain_name}.${data.terraform_remote_state.lke_state.outputs.cluster_domain_name}"
+        router1_transport = "${var.router1_transport_domain_name}.${data.terraform_remote_state.lke_state.outputs.cluster_domain_name}"
+        jwt               = "${try(jsondecode(restapi_object.router1.api_response).data.enrollmentJwt, "dummystring")}"
     }
 }
 
@@ -78,7 +82,7 @@ resource "helm_release" "ziti_router1" {
     name       = var.router1_release
     namespace  = "${data.terraform_remote_state.lke_state.outputs.ziti_namespace}"
     repository = "https://openziti.github.io/helm-charts"
-    chart      = "${var.ziti_charts}/ziti-router"
+    chart      = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-router" : "ziti-router"
     version    = "<0.3"
     wait       = false  # hooks don't run if wait=true!?
     values     = [data.template_file.ziti_router1_values.rendered]

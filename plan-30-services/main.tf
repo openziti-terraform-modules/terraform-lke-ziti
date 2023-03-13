@@ -25,8 +25,8 @@ data "terraform_remote_state" "lke_state" {
 }
 
 provider restapi {
-    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:${data.terraform_remote_state.lke_state.outputs.mgmt_port}/edge/management/v1"
-    cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
+    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
+    cacerts_file          = "${path.root}/../plan-20-router/.terraform/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
 }
@@ -40,7 +40,6 @@ provider "helm" {
         cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
     }
 }
-
 
 # find the id of the Router's tunnel identity so we can declare it in the next
 # resource for import and ongoing PATCH management
@@ -95,194 +94,28 @@ resource "local_file" "client_identity" {
     filename = "/tmp/lke-edge-client.jwt"
 }
 
-resource "restapi_object" "mgmt_intercept_config" {
-    depends_on = [data.restapi_object.intercept_v1_config_type]
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "mgmt-intercept-config",
-            "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocols": ["tcp"],
-                "addresses": ["mgmt.ziti"], 
-                "portRanges": [{"low":443, "high":443}]
-            }
-        }
-    EOF
+module "mgmt_service" {
+    source = "../modules/simple-tunneled-service"
+    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
+    host_config_type_id = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
+    upstream_address = data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_internal_host
+    upstream_port = 443
+    intercept_address = "mgmt.ziti"
+    intercept_port = 443
+    role_attribute = "mgmt-services"
+    name = "mgmt"
 }
 
-resource "restapi_object" "mgmt_host_config" {
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "mgmt-host-config",
-            "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocol": "tcp",
-                "address": "${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_internal_host}",
-                "port": ${data.terraform_remote_state.lke_state.outputs.mgmt_port}
-            }
-        }
-    EOF
-}
-
-resource "restapi_object" "mgmt_service" {
-    depends_on = [
-        restapi_object.mgmt_intercept_config,
-        restapi_object.mgmt_host_config
-    ]
-    provider    = restapi
-    path        = "/services"
-    data = <<-EOF
-        {
-            "name": "mgmt-service",
-            "encryptionRequired": true,
-            "configs": [
-                "${jsondecode(restapi_object.mgmt_intercept_config.api_response).data.id}",
-                "${jsondecode(restapi_object.mgmt_host_config.api_response).data.id}"
-            ],
-            "roleAttributes": [
-                "mgmt-services"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "mgmt_bind_service_policy" {
-    depends_on = [restapi_object.mgmt_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "mgmt-bind-policy",
-            "type": "Bind",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#mgmt-hosts"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.mgmt_service.api_response).data.id}"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "mgmt_dial_service_policy" {
-    depends_on = [restapi_object.mgmt_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "mgmt-dial-policy",
-            "type": "Dial",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#mgmt-clients"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.mgmt_service.api_response).data.id}"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "k8sapi_intercept_config" {
-    depends_on = [data.restapi_object.intercept_v1_config_type]
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "k8sapi-intercept-config",
-            "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocols": ["tcp"],
-                "addresses": ["kubernetes.default.svc"], 
-                "portRanges": [{"low":443, "high":443}]
-            }
-        }
-    EOF
-}
-
-resource "restapi_object" "k8sapi_host_config" {
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "k8sapi-host-config",
-            "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocol": "tcp",
-                "address": "kubernetes.default.svc",
-                "port": 443
-            }
-        }
-    EOF
-}
-
-resource "restapi_object" "k8sapi_service" {
-    depends_on = [
-        restapi_object.k8sapi_intercept_config,
-        restapi_object.k8sapi_host_config
-    ]
-    provider    = restapi
-    path        = "/services"
-    data = <<-EOF
-        {
-            "name": "k8sapi-service",
-            "encryptionRequired": true,
-            "configs": [
-                "${jsondecode(restapi_object.k8sapi_intercept_config.api_response).data.id}",
-                "${jsondecode(restapi_object.k8sapi_host_config.api_response).data.id}"
-            ],
-            "roleAttributes": [
-                "k8sapi-services"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "k8sapi_bind_service_policy" {
-    depends_on = [restapi_object.k8sapi_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "k8sapi-bind-policy",
-            "type": "Bind",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#k8sapi-hosts"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.k8sapi_service.api_response).data.id}"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "k8sapi_dial_service_policy" {
-    depends_on = [restapi_object.k8sapi_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "k8sapi-dial-policy",
-            "type": "Dial",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#k8sapi-clients"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.k8sapi_service.api_response).data.id}"
-            ]
-        }
-    EOF
+module "k8sapi_service" {
+    source = "../modules/simple-tunneled-service"
+    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
+    host_config_type_id = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
+    upstream_address = "kubernetes.default.svc"
+    upstream_port = 443
+    intercept_address = "kubernetes.default.svc"
+    intercept_port = 443
+    role_attribute = "k8sapi-services"
+    name = "k8sapi"
 }
 
 resource "restapi_object" "webhook_host_identity" {
@@ -324,7 +157,7 @@ data "local_file" "webhook_host_identity" {
 
 resource "helm_release" "webhook_host" {
     depends_on   = [null_resource.enroll_webhook_host_identity]
-    chart        = "${var.ziti_charts}/httpbin"
+    chart        = var.ziti_charts != "" ? "${var.ziti_charts}/httpbin" : "httpbin"
     version      = ">=0.1.8"
     repository   = "https://openziti.github.io/helm-charts"
     name         = "webhook-host"
@@ -348,23 +181,6 @@ data "restapi_object" "intercept_v1_config_type" {
 }
 
 
-resource "restapi_object" "webhook_intercept_config" {
-    depends_on  = [data.restapi_object.intercept_v1_config_type]
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "webhook-intercept-config",
-            "configTypeId": "${jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocols": ["tcp"],
-                "addresses": ["webhook.ziti"], 
-                "portRanges": [{"low":80, "high":80}]
-            }
-        }
-    EOF
-}
-
 data "restapi_object" "host_v1_config_type" {
     provider     = restapi
     path         = "/config-types"
@@ -373,111 +189,19 @@ data "restapi_object" "host_v1_config_type" {
 }
 
 
-resource "restapi_object" "webhook_host_config" {
-    provider    = restapi
-    path        = "/configs"
-    data = <<-EOF
-        {
-            "name": "webhook-host-config",
-            "configTypeId": "${jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id}",
-            "data": {
-                "protocol": "tcp",
-                "address": "httpbin",
-                "port": 8080
-            }
-        }
-    EOF
+module "webhook_service" {
+    source = "../modules/simple-tunneled-service"
+    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
+    host_config_type_id = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
+    upstream_address = "httpbin.default.svc"
+    upstream_port = 8080
+    intercept_address = "webhook.ziti"
+    intercept_port = 80
+    role_attribute = "webhook-services"
+    name = "posthook"
 }
 
-resource "restapi_object" "webhook_service" {
-    depends_on = [restapi_object.webhook_intercept_config,restapi_object.webhook_host_config]
-    provider    = restapi
-    path        = "/services"
-    data = <<-EOF
-        {
-            "name": "webhook-service",
-            "encryptionRequired": true,
-            "configs": [
-                "${jsondecode(restapi_object.webhook_intercept_config.api_response).data.id}",
-                "${jsondecode(restapi_object.webhook_host_config.api_response).data.id}"
-            ],
-            "roleAttributes": [
-                "webhook-services"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "webhook_bind_service_policy" {
-    depends_on = [restapi_object.webhook_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "webhook-bind-policy",
-            "type": "Bind",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#webhook-hosts"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.webhook_service.api_response).data.id}"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "webhook_dial_service_policy" {
-    depends_on = [restapi_object.webhook_service]
-    provider    = restapi
-    path        = "/service-policies"
-    data = <<-EOF
-        {
-            "name": "webhook-dial-policy",
-            "type": "Dial",
-            "semantic": "AnyOf",
-            "identityRoles": [
-                "#webhook-clients"
-            ],
-            "postureCheckRoles": [],
-            "serviceRoles": [
-                "@${jsondecode(restapi_object.webhook_service.api_response).data.id}"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "public_edge_router_policy" {
-    provider    = restapi
-    path        = "/edge-router-policies"
-    data = <<-EOF
-        {
-            "name": "public-routers",
-            "semantic": "AnyOf",
-            "edgeRouterRoles": [
-                "#public-routers"
-            ],
-            "identityRoles": [
-                "#all"
-            ]
-        }
-    EOF
-}
-
-resource "restapi_object" "public_service_edge_router_policy" {
-    provider    = restapi
-    path        = "/service-edge-router-policies"
-    data = <<-EOF
-        {
-            "name": "public-routers",
-            "semantic": "AnyOf",
-            "edgeRouterRoles": [
-                "#public-routers"
-            ],
-            "serviceRoles": [
-                "#all"
-            ]
-        }
-    EOF
+module "public_routers" {
+    source = "../modules/public-router-policies"
+    router_role = "public-routers"
 }
