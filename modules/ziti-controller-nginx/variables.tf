@@ -52,3 +52,8 @@ variable "install" {
     description = "install OpenZiti Controller Helm Chart unless false"
     default     = true
 }
+
+variable "mgmt_dns_san" {
+    description = "DNS Subject Alternative Name for the Managment API facilitates exposing this service with an OpenZiti intercept address."
+    default = "mgmt.ziti"
+}

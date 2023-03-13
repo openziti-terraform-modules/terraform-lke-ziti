@@ -1,14 +1,70 @@
 data "template_file" "ziti_controller_values" {
-    template = "${file("${path.module}/values-ziti-controller.yaml")}"
-    vars = {
-        cluster_domain_name = var.cluster_domain_name
-        ctrl_domain_name = var.ctrl_domain_name
-        ctrl_port = var.ctrl_port
-        client_domain_name = var.client_domain_name
-        client_port = var.client_port
-        mgmt_domain_name = var.mgmt_domain_name
-        mgmt_port = var.mgmt_port
-    }
+    template = <<-EOF
+        ctrlPlane:
+        service:
+            enabled: true
+            type: ClusterIP
+        ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+            kubernetes.io/ingress.allow-http: "false"
+            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+            nginx.ingress.kubernetes.io/secure-backends: "true"
+        advertisedHost: ${var.ctrl_domain_name}.${var.cluster_domain_name}
+        advertisedPort: 443
+
+        # enabling a separate CA for the edge signer allows us to manage the admin
+        # user's client certificate
+        edgeSignerPki:
+        enabled: true
+
+        webBindingPki:
+        # -- generate a separate PKI root of trust for web bindings, i.e., client,
+        # management, and prometheus APIs
+        enabled: true
+
+        clientApi:
+        advertisedHost: ${var.client_domain_name}.${var.cluster_domain_name}
+        advertisedPort: 443
+        service:
+            enabled: true
+            type: ClusterIP
+        ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+            kubernetes.io/ingress.allow-http: "false"
+            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+            nginx.ingress.kubernetes.io/secure-backends: "true"
+
+        managementApi:
+        advertisedHost: ${var.mgmt_domain_name}.${var.cluster_domain_name}
+        advertisedPort: 443
+        service:
+            enabled: true
+        ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+            kubernetes.io/ingress.allow-http: "false"
+            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+            nginx.ingress.kubernetes.io/secure-backends: "true"
+        dnsNames:
+            - ${var.mgmt_dns_san}
+
+        persistence:
+        storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
+
+        # don't install sub-charts because they're already installed by Terraform with
+        # special configuration for this plan
+        cert-manager:
+            enabled: false
+        trust-manager:
+            enabled: false
+        ingress-nginx:
+            enabled: false
+        EOF
 }
 
 resource "helm_release" "ziti_controller" {

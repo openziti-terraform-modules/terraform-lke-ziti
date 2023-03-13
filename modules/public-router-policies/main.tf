@@ -19,7 +19,7 @@ resource "restapi_object" "edge_router_policy" {
                 "#${var.router_role}"
             ],
             "identityRoles": [
-                "#all"
+                "#${var.identity_role}"
             ]
         }
     EOF
@@ -36,7 +36,7 @@ resource "restapi_object" "service_edge_router_policy" {
                 "#${var.router_role}"
             ],
             "serviceRoles": [
-                "#all"
+                "#${var.service_role}"
             ]
         }
     EOF
