@@ -37,8 +37,7 @@ lke-cluster-config.yaml
 # python
 .venv
 
-# Docs Stuff
-docs/_build
-
 # temp charts bind
 charts/
+
+.helm/

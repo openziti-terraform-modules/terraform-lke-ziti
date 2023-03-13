@@ -21,7 +21,7 @@ output "kubeconfig" {
 
 resource "local_sensitive_file" "kubeconfig" {
   depends_on   = [linode_lke_cluster.linode_lke]
-  filename     = "./kube-config"
+  filename     = "../kube-config"
   content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
   file_permission = 0600
 }
@@ -42,23 +42,23 @@ resource "local_sensitive_file" "kubeconfig" {
 #   value = data.template_file.ziti_router1_values.rendered
 # }
 
-resource "local_file" "ziti_router1_values" {
-  filename     = "/tmp/values-ziti-router1.yaml"
-  content      = data.template_file.ziti_router1_values.rendered
-  file_permission = 0600
-}
+# resource "local_file" "ziti_router1_values" {
+#   filename     = "/tmp/values-ziti-router1.yaml"
+#   content      = data.template_file.ziti_router1_values.rendered
+#   file_permission = 0600
+# }
 
 # output "ctrl_domain_name" {
 #   value = var.ctrl_domain_name
 # }
 
-# output "ctrl_port" {
-#   value = var.ctrl_port
-# }
+output "mgmt_port" {
+  value = var.mgmt_port
+}
 
-# output "domain_name" {
-#    value = var.domain_name
-# }
+output "domain_name" {
+    value = var.domain_name
+}
 
 # output "email" {
 #    value = var.email
@@ -68,6 +68,28 @@ resource "local_file" "ziti_router1_values" {
 #    value = var.tags
 # }
 
-# output "ziti_controller_mgmt" {
-#    value = "https://${helm_release.ziti_controller.name}-mgmt.${helm_release.ziti_controller.namespace}.svc:${var.mgmt_port}"
-# }
+output "ziti_controller_external_host" {
+    value = "${var.mgmt_domain_name}.${var.domain_name}"
+}
+
+output "ziti_controller_mgmt_internal_host" {
+    value = "${helm_release.ziti_controller.name}-mgmt.${var.ziti_namespace}.svc"
+}
+
+output "ziti_controller_ctrl" {
+    value = "${helm_release.ziti_controller.name}-ctrl.${var.ziti_namespace}.svc:${var.ctrl_port}"
+}
+
+output "ziti_namespace" {
+  value = "${var.ziti_namespace}"
+}
+
+output "ziti_admin_user" {
+  sensitive = true
+  value = "${data.kubernetes_secret.admin_secret.data["admin-user"]}"
+}
+
+output "ziti_admin_password" {
+  sensitive = true
+  value = "${data.kubernetes_secret.admin_secret.data["admin-password"]}"
+}

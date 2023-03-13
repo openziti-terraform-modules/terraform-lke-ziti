@@ -1,0 +1,10 @@
+- name: Ensure OpenZiti Controller's Advertised Host Resolves
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Wait up to 30m for DNS propagation
+      ansible.builtin.debug:
+        msg: waiting up to 30m for DNS
+      until: lookup('community.general.dig', client_dns) == nodebalancer_ip
+      retries: 180
+      delay: 10

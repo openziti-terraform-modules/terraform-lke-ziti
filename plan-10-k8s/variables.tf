@@ -1,4 +1,4 @@
-variable "token" {
+variable "LINODE_TOKEN" {
     description = "Your Linode API Personal Access Token. (required)"
 }
 
@@ -51,13 +51,18 @@ variable "console_domain_name" {
 }
 
 variable "ctrl_domain_name" {
-    description = "The subdomain name to use for Ziti router ctrl plane"
-    default     = "ctrl"  # wildcard DNS record resolves all names to the Nodebalancer
+    description = "The subdomain name to use for Ziti router Ctrl Plane"
+    default     = "ctrl"     # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "client_domain_name" {
-    description = "The subdomain name to use for Ziti Edge client API"
-    default     = "client"  # wildcard DNS record resolves all names to the Nodebalancer
+    description = "The subdomain name to use for Ziti Edge Client API"
+    default     = "client"   # wildcard DNS record resolves all names to the Nodebalancer
+}
+
+variable "mgmt_domain_name" {
+    description = "The subdomain name to use for Ziti Edge Management API"
+    default     = "management"   # wildcard DNS record resolves all names to the Nodebalancer
 }
 
 variable "ziti_console_release" {
@@ -89,42 +94,12 @@ variable "mgmt_port" {
     default     = 443
 }
 
-variable "ziti_controller_namespace" {
-    description = "Ziti Controller namespace"
-    default     = "ziti-controller"
+variable "ziti_namespace" {
+    description = "Ziti Namespace"
+    default     = "ziti"
 }
 
 variable "wildcard_ttl_sec" {
     description = "max seconds recursive nameservers should cache the wildcard record"
     default = "3600"
-}
-
-variable "router1_namespace" {
-    description = "namespace to create for router1"
-    default = "ziti-router1"
-}
-
-variable "router1_release" {
-    description = "Helm release name for router1"
-    default = "ziti-router1"
-}
-
-variable "router1_transport_domain_name" {
-    description = "DNS name for the transport service router1 provides to other routers"
-    default = "router1-transport"
-}
-
-variable "router1_edge_domain_name" {
-    description = "DNS name for the edge service router1 provides to edge SDK clients"
-    default = "router1-edge"
-}
-
-variable "service1_namespace" {
-    description = "namespace to create for service1"
-    default = "ziti-service1"
-}
-
-variable "service1_release" {
-    description = "Helm release name for service1"
-    default = "webhook-server1"
 }
