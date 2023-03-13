@@ -1,8 +1,3 @@
-variable "domain_name" {
-    description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. Default is to inherit and use the same name as the LKE plan."
-    default = null
-}
-
 variable "router1_release" {
     description = "Helm release name for router1"
     default = "ziti-router1"
@@ -26,4 +21,10 @@ variable "service1_namespace" {
 variable "service1_release" {
     description = "Helm release name for service1"
     default = "webhook-server1"
+}
+
+variable "ziti_charts" {
+    description = "Filesystem path to source OpenZiti Helm Charts instead of Helm repo"
+    type = string
+    default = ""
 }
