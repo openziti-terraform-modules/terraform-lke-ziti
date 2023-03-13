@@ -1,5 +1,5 @@
 data "template_file" "ziti_controller_values" {
-    template = "${file("helm-chart-values/values-ziti-controller.yaml")}"
+    template = "${file("${path.module}/values-ziti-controller.yaml")}"
     vars = {
         cluster_domain_name = var.cluster_domain_name
         ctrl_domain_name = var.ctrl_domain_name
@@ -12,11 +12,12 @@ data "template_file" "ziti_controller_values" {
 }
 
 resource "helm_release" "ziti_controller" {
+    count = var.install ? 1 : 0  # install unless false
     namespace        = var.ziti_namespace
     name             = var.ziti_controller_release
     version          = "~> 0.2"
     repository       = "https://openziti.github.io/helm-charts"
-    chart            = "${var.ziti_charts}/ziti-controller"
+    chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-controller" : "ziti-controller"
     values           = [data.template_file.ziti_controller_values.rendered]
 }
 

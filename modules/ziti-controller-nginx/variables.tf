@@ -48,3 +48,7 @@ variable "mgmt_port" {
     default     = 443
 }
 
+variable "install" {
+    description = "install OpenZiti Controller Helm Chart unless false"
+    default     = true
+}
