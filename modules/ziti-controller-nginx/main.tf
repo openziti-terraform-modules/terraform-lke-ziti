@@ -1,60 +1,60 @@
 data "template_file" "ziti_controller_values" {
     template = <<-EOF
         ctrlPlane:
-        service:
-            enabled: true
-            type: ClusterIP
-        ingress:
-            enabled: true
-            ingressClassName: nginx
-            annotations:
-            kubernetes.io/ingress.allow-http: "false"
-            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-            nginx.ingress.kubernetes.io/secure-backends: "true"
-        advertisedHost: ${var.ctrl_domain_name}.${var.cluster_domain_name}
-        advertisedPort: 443
+            advertisedHost: ${var.ctrl_domain_name}.${var.cluster_domain_name}
+            advertisedPort: 443
+            service:
+                enabled: true
+                type: ClusterIP
+            ingress:
+                enabled: true
+                ingressClassName: nginx
+                annotations:
+                    kubernetes.io/ingress.allow-http: "false"
+                    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+                    nginx.ingress.kubernetes.io/secure-backends: "true"
 
         # enabling a separate CA for the edge signer allows us to manage the admin
         # user's client certificate
         edgeSignerPki:
-        enabled: true
+            enabled: true
 
         webBindingPki:
         # -- generate a separate PKI root of trust for web bindings, i.e., client,
         # management, and prometheus APIs
-        enabled: true
+            enabled: true
 
         clientApi:
-        advertisedHost: ${var.client_domain_name}.${var.cluster_domain_name}
-        advertisedPort: 443
-        service:
-            enabled: true
-            type: ClusterIP
-        ingress:
-            enabled: true
-            ingressClassName: nginx
-            annotations:
-            kubernetes.io/ingress.allow-http: "false"
-            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-            nginx.ingress.kubernetes.io/secure-backends: "true"
+            advertisedHost: ${var.client_domain_name}.${var.cluster_domain_name}
+            advertisedPort: 443
+            service:
+                enabled: true
+                type: ClusterIP
+            ingress:
+                enabled: true
+                ingressClassName: nginx
+                annotations:
+                    kubernetes.io/ingress.allow-http: "false"
+                    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+                    nginx.ingress.kubernetes.io/secure-backends: "true"
 
         managementApi:
-        advertisedHost: ${var.mgmt_domain_name}.${var.cluster_domain_name}
-        advertisedPort: 443
-        service:
-            enabled: true
-        ingress:
-            enabled: true
-            ingressClassName: nginx
-            annotations:
-            kubernetes.io/ingress.allow-http: "false"
-            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-            nginx.ingress.kubernetes.io/secure-backends: "true"
-        dnsNames:
-            - ${var.mgmt_dns_san}
+            advertisedHost: ${var.mgmt_domain_name}.${var.cluster_domain_name}
+            advertisedPort: 443
+            dnsNames:
+                - ${var.mgmt_dns_san}
+            service:
+                enabled: true
+            ingress:
+                enabled: true
+                ingressClassName: nginx
+                annotations:
+                    kubernetes.io/ingress.allow-http: "false"
+                    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+                    nginx.ingress.kubernetes.io/secure-backends: "true"
 
         persistence:
-        storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
+            storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
 
         # don't install sub-charts because they're already installed by Terraform with
         # special configuration for this plan
