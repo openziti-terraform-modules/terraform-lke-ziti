@@ -107,10 +107,6 @@ resource "helm_release" "trust_manager" {
     }
 }
 
-data "template_file" "ingress_nginx_values" {
-    template = "${file("helm-chart-values/values-ingress-nginx.yaml")}"
-}
-
 resource "helm_release" "ingress_nginx" {
     depends_on       = [module.cert_manager]
     name             = "ingress-nginx"
@@ -119,7 +115,13 @@ resource "helm_release" "ingress_nginx" {
     create_namespace = true
     repository       = "https://kubernetes.github.io/ingress-nginx"
     chart            = "ingress-nginx"
-    values           = [data.template_file.ingress_nginx_values.rendered]
+    values           = [yamlencode({
+        controller = {
+            extraArgs = {
+                enable-ssl-passthrough = "true"
+            }
+        }
+    })]
 }
 
 # find the external IP of the Nodebalancer provisioned for ingress-nginx
