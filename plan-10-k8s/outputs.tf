@@ -20,7 +20,7 @@ output "ziti_namespace" {
     value = "${var.ziti_namespace}"
 }
 
-output "ziti_admin_user" {
+output "ziti_admin_username" {
     sensitive = true
     value     = "${module.ziti_controller.ziti_admin_password["admin-user"]}"
 }

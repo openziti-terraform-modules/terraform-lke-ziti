@@ -54,7 +54,7 @@ data "template_file" "ziti_controller_values" {
                     nginx.ingress.kubernetes.io/secure-backends: "true"
 
         persistence:
-            storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
+            storageClass: ${var.storage_class}
 
         # don't install sub-charts because they're already installed by Terraform with
         # special configuration for this plan

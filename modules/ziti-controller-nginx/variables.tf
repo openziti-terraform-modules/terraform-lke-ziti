@@ -1,5 +1,4 @@
 variable "ziti_controller_release" {
-    default = "ziti-controller"
     description = "name of Helm release for OpenZiti Controller on which to build conventional resource names"
 }
 
@@ -39,8 +38,7 @@ variable "client_port" {
 }
 
 variable "mgmt_domain_name" {
-    description = "The subdomain name to use for Ziti Edge Management API"
-    default     = "mgmt"   # wildcard DNS record resolves all names to the Nodebalancer
+    description = "The subdomain name to use for Ziti Edge Management API. This is identical to Client API if the Management API cluster service is disabled."
 }
 
 variable "mgmt_port" {
@@ -56,4 +54,9 @@ variable "install" {
 variable "mgmt_dns_san" {
     description = "DNS Subject Alternative Name for the Managment API facilitates exposing this service with an OpenZiti intercept address."
     default = "mgmt.ziti"
+}
+
+variable "storage_class" {
+    description = "storage class to fulfill this controller's persistent volume claim"
+    default = "default"
 }

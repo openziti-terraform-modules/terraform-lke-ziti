@@ -27,7 +27,7 @@ data "terraform_remote_state" "lke_state" {
 provider restapi {
     uri                   = "https://mgmt.ziti:443/edge/management/v1"
     cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
-    ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_user}"
+    ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_username}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
 }
 
