@@ -6,7 +6,7 @@ variable "email" {
     description = "The email address cert-manager should submit during ACME request to Let's Encrypt for server certs. (required)"
 }
 
-variable "cluster_domain_name" {
+variable "dns_zone" {
     description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. (required)"
 }
 

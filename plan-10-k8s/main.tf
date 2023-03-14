@@ -107,10 +107,6 @@ resource "helm_release" "trust_manager" {
     }
 }
 
-data "template_file" "ingress_nginx_values" {
-    template = "${file("helm-chart-values/values-ingress-nginx.yaml")}"
-}
-
 resource "helm_release" "ingress_nginx" {
     depends_on       = [module.cert_manager]
     name             = "ingress-nginx"
@@ -119,7 +115,13 @@ resource "helm_release" "ingress_nginx" {
     create_namespace = true
     repository       = "https://kubernetes.github.io/ingress-nginx"
     chart            = "ingress-nginx"
-    values           = [data.template_file.ingress_nginx_values.rendered]
+    values           = [yamlencode({
+        controller = {
+            extraArgs = {
+                enable-ssl-passthrough = "true"
+            }
+        }
+    })]
 }
 
 # find the external IP of the Nodebalancer provisioned for ingress-nginx
@@ -133,7 +135,7 @@ data "kubernetes_service" "ingress_nginx_controller" {
 
 resource "linode_domain" "cluster_zone" {
     type      = "master"
-    domain    = var.cluster_domain_name
+    domain    = var.dns_zone
     soa_email = var.email
     tags      = var.tags
 }
@@ -156,18 +158,7 @@ module "ziti_controller" {
     ziti_charts = var.ziti_charts
     ziti_controller_release = var.ziti_controller_release
     ziti_namespace = var.ziti_namespace
-    cluster_domain_name = var.cluster_domain_name
-}
-
-data "template_file" "ziti_console_values" {
-    template = "${file("helm-chart-values/values-ziti-console.yaml")}"
-    vars = {
-        cluster_issuer = var.cluster_issuer_name
-        cluster_domain_name = var.cluster_domain_name
-        controller_namespace = var.ziti_namespace
-        controller_release = var.ziti_controller_release
-        console_release = var.ziti_console_release
-    }
+    dns_zone = var.dns_zone
 }
 
 resource "helm_release" "ziti_console" {
@@ -177,7 +168,24 @@ resource "helm_release" "ziti_console" {
     repository       = "https://openziti.github.io/helm-charts"
     chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-console" : "ziti-console"
     version          = "<0.3"
-    values           = [data.template_file.ziti_console_values.rendered]
+    values           = [yamlencode({
+        ingress = {
+            enabled = "true"
+            ingressClassName = "nginx"
+            annotations = {
+                "cert-manager.io/cluster-issuer" = var.cluster_issuer_name
+            }
+            advertisedHost = "console.${var.dns_zone}"
+            tlsSecret = "${var.ziti_console_release}-tls-secret"
+        }
+        settings = {
+            edgeControllers = [{
+                name = "Ziti Edge Mgmt API"
+                url = "https://${var.ziti_controller_release}-mgmt.${var.ziti_namespace}.svc:443"
+                default = "true"
+            }]
+        }
+    })]
 }
 
 resource "null_resource" "wait_for_dns" {
@@ -188,7 +196,7 @@ resource "null_resource" "wait_for_dns" {
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
-                -e client_dns=client.${var.cluster_domain_name} \
+                -e client_dns=client.${var.dns_zone} \
                 -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
         EOF
     }

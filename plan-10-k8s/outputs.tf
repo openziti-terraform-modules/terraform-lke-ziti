@@ -10,17 +10,17 @@ resource "local_sensitive_file" "kubeconfig" {
     file_permission = 0600
 }
 
-output "cluster_domain_name" {
+output "dns_zone" {
     description = "consumed by router plan to build ingress names"
-    value = var.cluster_domain_name
+    value = var.dns_zone
 }
 
 output "ziti_namespace" {
     description = "consumed by router plan to install release in same namespace as controller which is convenient but not necessary"
-    value = "${var.ziti_namespace}"
+    value = var.ziti_namespace
 }
 
-output "ziti_admin_user" {
+output "ziti_admin_username" {
     sensitive = true
     value     = "${module.ziti_controller.ziti_admin_password["admin-user"]}"
 }

@@ -20,9 +20,9 @@ output "ziti_controller_mgmt_internal_host" {
 }
 
 output "ziti_controller_client_external_host" {
-    value = "${var.client_domain_name}.${var.cluster_domain_name}"
+    value = "${var.client_domain_name}.${var.dns_zone}"
 }
 
 output "ziti_controller_mgmt_external_host" {
-    value = "${var.mgmt_domain_name}.${var.cluster_domain_name}"
+    value = "${var.mgmt_domain_name}.${var.dns_zone}"
 }
