@@ -17,7 +17,7 @@ terraform {
     }
 }
 
-data "terraform_remote_state" "lke_state" {
+data "terraform_remote_state" "k8s_state" {
     backend = "local"
     config = {
         path = "${path.root}/../plan-10-k8s/terraform.tfstate"
@@ -27,17 +27,17 @@ data "terraform_remote_state" "lke_state" {
 provider restapi {
     uri                   = "https://mgmt.ziti:443/edge/management/v1"
     cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
-    ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_username}"
-    ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
+    ziti_username         = "${data.terraform_remote_state.k8s_state.outputs.ziti_admin_username}"
+    ziti_password         = "${data.terraform_remote_state.k8s_state.outputs.ziti_admin_password}"
 }
 
 provider "helm" {
     repository_config_path = "${path.root}/.helm/repositories.yaml" 
     repository_cache       = "${path.root}/.helm"
     kubernetes {
-        host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
-        token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
-        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+        host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
+        token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
+        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
     }
 }
 

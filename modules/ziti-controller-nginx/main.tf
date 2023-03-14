@@ -1,5 +1,5 @@
 resource "helm_release" "ziti_controller" {
-    count            = var.install ? 1 : 0  # install unless false
+    count            = var.install == true ? 1 : 0  # install unless false
     namespace        = var.ziti_namespace
     name             = var.ziti_controller_release
     version          = "~> 0.2"

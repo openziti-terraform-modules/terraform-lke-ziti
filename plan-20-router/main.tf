@@ -21,37 +21,44 @@ terraform {
     }
 }
 
-data "terraform_remote_state" "lke_state" {
+data "terraform_remote_state" "k8s_state" {
     backend = "local"
     config = {
         path = "${path.root}/../plan-10-k8s/terraform.tfstate"
     }
 }
 
+data "terraform_remote_state" "controller_state" {
+    backend = "local"
+    config = {
+        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+    }
+}
+
 provider restapi {
-    uri                   = "https://${data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
-    cacerts_file          = "${path.root}/.terraform/ctrl-plane-cas.crt"
-    ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_username}"
-    ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
+    uri                   = "https://${data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
+    cacerts_string        = (data.terraform_remote_state.controller_state.outputs.ctrl_plane_cas).data["ctrl-plane-cas.crt"]
+    ziti_username         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-user"]
+    ziti_password         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-password"]
 }
 
 provider "helm" {
     repository_config_path = "${path.root}/.helm/repositories.yaml" 
     repository_cache       = "${path.root}/.helm"
     kubernetes {
-        host                   = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.server
-        token                  = yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).users[0].user.token
-        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.lke_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+        host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
+        token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
+        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
     }
 }
 
 module "ziti_router_public" {
     source                    = "../modules/ziti-router-nginx"
     name                      = "router1"
-    namespace                 = data.terraform_remote_state.lke_state.outputs.ziti_namespace
-    ctrl_endpoint             = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_ctrl_internal_host}:443"
-    edge_advertised_host      = "router1.${data.terraform_remote_state.lke_state.outputs.dns_zone}"
-    transport_advertised_host = "router1-transport.${data.terraform_remote_state.lke_state.outputs.dns_zone}"
+    namespace                 = data.terraform_remote_state.k8s_state.outputs.ziti_namespace
+    ctrl_endpoint             = "${data.terraform_remote_state.controller_state.outputs.ziti_controller_ctrl_internal_host}:443"
+    edge_advertised_host      = "router1.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    transport_advertised_host = "router1-transport.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
     ziti_charts               = var.ziti_charts
     router_properties         = {
         isTunnelerEnabled = true
