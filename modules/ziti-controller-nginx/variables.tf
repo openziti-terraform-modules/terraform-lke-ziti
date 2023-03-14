@@ -61,3 +61,12 @@ variable "storage_class" {
     description = "storage class to fulfill this controller's persistent volume claim"
     default = ""
 }
+
+variable "ingress_annotations" {
+    description = "annotations on the router's ingress resource to trigger ingress-nginx controller"
+    default = {
+        "kubernetes.io/ingress.allow-http" = "false"
+        "nginx.ingress.kubernetes.io/ssl-passthrough" = "true"
+        "nginx.ingress.kubernetes.io/secure-backends" = "true"
+    }
+}
