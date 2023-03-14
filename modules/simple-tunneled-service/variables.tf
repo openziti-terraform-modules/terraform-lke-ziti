@@ -1,13 +1,3 @@
-variable "intercept_config_type_id" {
-    description = "the ziti id of the intercept.v1 config type"
-    type = string
-}
-
-variable "host_config_type_id" {
-    description = "the ziti id of the host.v1 config type"
-    type = string
-}
-
 variable "role_attributes" {
     description = "service role to assign"
     type = list

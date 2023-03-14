@@ -7,11 +7,18 @@ terraform {
     }
 }
 
+data "restapi_object" "intercept_v1_config_type" {
+    provider     = restapi
+    path         = "/config-types"
+    search_key   = "name"
+    search_value = "intercept.v1"
+}
+
 resource "restapi_object" "intercept_config" {
     path               = "/configs"
     data               = jsonencode({
         name           = "${var.name}-intercept-config"
-        configTypeId   = var.intercept_config_type_id
+        configTypeId   = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
         data           = {
             protocols  = [var.transport_protocol]
             addresses  = [var.intercept_address]
@@ -23,11 +30,18 @@ resource "restapi_object" "intercept_config" {
     })
 }
 
+data "restapi_object" "host_v1_config_type" {
+    provider     = restapi
+    path         = "/config-types"
+    search_key   = "name"
+    search_value = "host.v1"
+}
+
 resource "restapi_object" "host_config" {
     path             = "/configs"
     data             = jsonencode({
         name         = "${var.name}-host-config"
-        configTypeId = var.host_config_type_id
+        configTypeId = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
         data         = {
             protocol = var.transport_protocol
             address  = var.upstream_address
@@ -44,10 +58,10 @@ resource "restapi_object" "service" {
     path                   = "/services"
     data                   = jsonencode({
         name               = "${var.name}-service"
-        encryptionRequired = "true"
+        encryptionRequired = true
         configs            = [
-            "${jsondecode(restapi_object.intercept_config.api_response).data.id}",
-            "${jsondecode(restapi_object.host_config.api_response).data.id}"
+            jsondecode(restapi_object.intercept_config.api_response).data.id,
+            jsondecode(restapi_object.host_config.api_response).data.id
         ]
         roleAttributes = var.role_attributes
     })
@@ -60,7 +74,7 @@ resource "restapi_object" "bind_service_policy" {
         name          = "${var.name}-bind-policy"
         type          = "Bind"
         semantic      = var.bind_semantic
-        identityRoles = var.bind_identity_roles != [] ? var.bind_identity_roles : ["#${var.name}-hosts"]
+        identityRoles = length(var.bind_identity_roles) != 0 ? var.bind_identity_roles : ["#${var.name}-hosts"]
         serviceRoles  = ["@${jsondecode(restapi_object.service.api_response).data.id}"]
     })
 }
@@ -72,7 +86,7 @@ resource "restapi_object" "dial_service_policy" {
         name          = "${var.name}-dial-policy"
         type          = "Dial"
         semantic      = var.dial_semantic
-        identityRoles = var.dial_identity_roles != [] ? var.dial_identity_roles : ["#${var.name}-clients"]
+        identityRoles = length(var.dial_identity_roles) != 0 ? var.dial_identity_roles : ["#${var.name}-clients"]
         serviceRoles  = ["@${jsondecode(restapi_object.service.api_response).data.id}"]
     })
 }

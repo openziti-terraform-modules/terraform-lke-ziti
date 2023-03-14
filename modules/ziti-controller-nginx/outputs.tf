@@ -1,14 +1,14 @@
 output "ctrl_plane_cas" {
-    value = "${data.kubernetes_config_map.ctrl_trust_bundle.data}"
+    value = data.kubernetes_config_map.ctrl_trust_bundle
 }
 
 output "admin_client_cert" {
-    value  = "${data.kubernetes_secret.admin_client_cert_secret}"
+    value  = data.kubernetes_secret.admin_client_cert_secret
 }
 
 output "ziti_admin_password" {
     sensitive = true
-    value = "${data.kubernetes_secret.admin_password_secret.data}"
+    value = data.kubernetes_secret.admin_password_secret
 }
 
 output "ziti_controller_ctrl_internal_host" {

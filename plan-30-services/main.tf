@@ -76,7 +76,7 @@ resource "restapi_object" "client_identity" {
             ott        = true
         }
         roleAttributes = [
-            "webhook-clients",
+            "testapi-clients",
             "k8sapi-clients",
             "mgmt-clients"
         ]
@@ -91,8 +91,6 @@ resource "local_file" "client_identity" {
 
 module "mgmt_service" {
     source                   = "../modules/simple-tunneled-service"
-    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
-    host_config_type_id      = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
     upstream_address         = data.terraform_remote_state.lke_state.outputs.ziti_controller_mgmt_internal_host
     upstream_port            = 443
     intercept_address        = "mgmt.ziti"
@@ -103,8 +101,6 @@ module "mgmt_service" {
 
 module "k8sapi_service" {
     source                   = "../modules/simple-tunneled-service"
-    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
-    host_config_type_id      = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
     upstream_address         = "kubernetes.default.svc"
     upstream_port            = 443
     intercept_address        = "kubernetes.default.svc"
@@ -113,81 +109,66 @@ module "k8sapi_service" {
     name                     = "k8sapi"
 }
 
-resource "restapi_object" "webhook_host_identity" {
+resource "restapi_object" "testapi_host_identity" {
     provider           = restapi
     path               = "/identities"
     data               = jsonencode({
-        name           = "webhook-host"
+        name           = "testapi-host"
         type           = "Device"
         isAdmin        = false
         enrollment     = {
             ott        = true
         }
-        roleAttributes = ["webhook-hosts"]
+        roleAttributes = ["testapi-hosts"]
     })
 }
 
-resource "null_resource" "enroll_webhook_host_identity" {
-    depends_on = [restapi_object.webhook_host_identity]
+resource "null_resource" "enroll_testapi_host_identity" {
+    depends_on = [restapi_object.testapi_host_identity]
     provisioner "local-exec" {
         command = <<-EOF
             ziti edge enroll \
-                --jwt <(echo '${jsondecode(restapi_object.webhook_host_identity.api_response).data.enrollment.ott.jwt}') \
-                --out ${path.root}/.terraform/webhook-host.json
+                --jwt <(echo '${jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt}') \
+                --out ${path.root}/.terraform/testapi-host.json
         EOF
         interpreter = ["bash", "-c"]
     }
 }
 
-data "local_file" "webhook_host_identity" {
-    depends_on = [null_resource.enroll_webhook_host_identity]
-    filename   = "${path.root}/.terraform/webhook-host.json"
+data "local_file" "testapi_host_identity" {
+    depends_on = [null_resource.enroll_testapi_host_identity]
+    filename   = "${path.root}/.terraform/testapi-host.json"
 }
 
-resource "helm_release" "webhook_host" {
-    depends_on    = [null_resource.enroll_webhook_host_identity]
+resource "helm_release" "testapi_host" {
+    depends_on    = [
+        null_resource.enroll_testapi_host_identity,
+        module.testapi_service
+    ]
     chart         = var.ziti_charts != "" ? "${var.ziti_charts}/httpbin" : "httpbin"
     version       = ">=0.1.8"
     repository    = "https://openziti.github.io/helm-charts"
-    name          = "webhook-host"
+    name          = "testapi-host"
     namespace     = "default"
     set             {
         name      = "zitiServiceName"
-        value     = "webhook-service"
+        value     = "testapi-service"
     }
     set_sensitive   {
         name      = "zitiIdentityEncoding"
-        value     = base64encode(data.local_file.webhook_host_identity.content)
+        value     = base64encode(data.local_file.testapi_host_identity.content)
         type      = "auto"
     }
 }
 
-data "restapi_object" "intercept_v1_config_type" {
-    provider     = restapi
-    path         = "/config-types"
-    search_key   = "name"
-    search_value = "intercept.v1"
-}
-
-
-data "restapi_object" "host_v1_config_type" {
-    provider     = restapi
-    path         = "/config-types"
-    search_key   = "name"
-    search_value = "host.v1"
-}
-
-
-module "webhook_service" {
+module "testapi_service" {
     source                   = "../modules/simple-tunneled-service"
-    intercept_config_type_id = jsondecode(data.restapi_object.intercept_v1_config_type.api_response).data.id
-    host_config_type_id      = jsondecode(data.restapi_object.host_v1_config_type.api_response).data.id
     upstream_address         = "httpbin.default.svc"
     upstream_port            = 8080
-    intercept_address        = "webhook.ziti"
+    intercept_address        = "testapi.ziti"
     intercept_port           = 80
-    role_attributes          = ["webhook-services"]
-    name                     = "posthook"
+    role_attributes          = ["testapi-services"]
+    name                     = "testapi"
 }
 
 module "public_routers" {

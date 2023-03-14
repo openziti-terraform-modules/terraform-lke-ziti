@@ -2,16 +2,16 @@
 
 Take OpenZiti for a spin with Terraform on Kubernetes. This will guide you to apply a Terraform plan for each stage:
 
-1. Create a cluster with OpenZiti installed and ready for Console and CLI access.
-1. Provision your first OpenZiti router.
-1. Configure some OpenZiti Services.
+1. Create a cluster with cert-manager and ingress-nginx.
+1. Deploy OpenZiti and enable Console and CLI access.
+1. Provision an OpenZiti router.
+1. Create some OpenZiti Services for cluster workloads.
 1. Configure your OpenZiti Client for network access.
 
 ## Kubernetes Services
 
 * `ingress-nginx` w/ Nodebalancer
-* `cert-manager` w/ Let's Encrypt issuer
-* `trust-manager`
+* `cert-manager` w/ Let's Encrypt issuer and `trust-manager`
 * `ziti-controller`
 * `ziti-console`
 * `ziti-router`
@@ -32,7 +32,6 @@ Take OpenZiti for a spin with Terraform on Kubernetes. This will guide you to ap
 * `k9s`
 * `curl`
 * `jq`
-
 
 ## Delegate DNS
 
@@ -250,6 +249,30 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
 1. Visit the Management API reference in a web browser. https://localhost:1280/edge/management/v1/docs
 
 
+## Apply the OpenZiti Controller Plan
+
+This TF plan deploys an OpenZiti Controller and the OpenZiti Console with a Let's Encrypt certificate.
+
+1. Initialize the workspace.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform init;)
+    ```
+
+1. Perform a dry run.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform plan;)
+    ```
+
+1. Apply the plan.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform apply;)
+    ```
+
+1. Test cluster connection.
+
 ## Apply the Router Terraform Plan
 
 This plan will deploy an OpenZiti Router. The main reason it's separate from the first plan is that the OpenZiti Terraform Provider gets configuration input from the Kubernetes plan's TF state.
@@ -325,7 +348,7 @@ This plan will help you get started using OpenZiti Services with a Tunneler.
 1. Test the demo API.
 
     ```bash
-    curl -sSf -XPOST -d ziti=awesome http://webhook.ziti/post | jq .data
+    curl -sSf -XPOST -d ziti=awesome http://testapi.ziti/post | jq .data
     ```
 
 1. Use the Kubernetes API over Ziti
