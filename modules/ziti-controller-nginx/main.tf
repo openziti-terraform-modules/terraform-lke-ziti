@@ -1,7 +1,7 @@
 data "template_file" "ziti_controller_values" {
     template = <<-EOF
         ctrlPlane:
-            advertisedHost: ${var.ctrl_domain_name}.${var.cluster_domain_name}
+            advertisedHost: ${var.ctrl_domain_name}.${var.dns_zone}
             advertisedPort: 443
             service:
                 enabled: true
@@ -25,7 +25,7 @@ data "template_file" "ziti_controller_values" {
             enabled: true
 
         clientApi:
-            advertisedHost: ${var.client_domain_name}.${var.cluster_domain_name}
+            advertisedHost: ${var.client_domain_name}.${var.dns_zone}
             advertisedPort: 443
             service:
                 enabled: true
@@ -39,7 +39,7 @@ data "template_file" "ziti_controller_values" {
                     nginx.ingress.kubernetes.io/secure-backends: "true"
 
         managementApi:
-            advertisedHost: ${var.mgmt_domain_name}.${var.cluster_domain_name}
+            advertisedHost: ${var.mgmt_domain_name}.${var.dns_zone}
             advertisedPort: 443
             dnsNames:
                 - ${var.mgmt_dns_san}

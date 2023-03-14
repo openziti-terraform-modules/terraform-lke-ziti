@@ -13,7 +13,7 @@ variable "ziti_charts" {
     default = ""
 }
 
-variable "cluster_domain_name" {
+variable "dns_zone" {
     description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. (required)"
 }
 
@@ -39,6 +39,7 @@ variable "client_port" {
 
 variable "mgmt_domain_name" {
     description = "The subdomain name to use for Ziti Edge Management API. This is identical to Client API if the Management API cluster service is disabled."
+    default = "management"
 }
 
 variable "mgmt_port" {

@@ -33,7 +33,6 @@ provider restapi {
     cacerts_file          = "${path.root}/.terraform/ctrl-plane-cas.crt"
     ziti_username         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_username}"
     ziti_password         = "${data.terraform_remote_state.lke_state.outputs.ziti_admin_password}"
-    debug                 = true
 }
 
 provider "helm" {
@@ -47,9 +46,17 @@ provider "helm" {
 }
 
 module "ziti_router_public" {
-    source = "../modules/ziti-router-nginx"
-    ctrl_endpoint     = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_ctrl_internal_host}:443"
-    router1_edge      = "${var.router1_edge_domain_name}.${data.terraform_remote_state.lke_state.outputs.cluster_domain_name}"
-    router1_transport = "${var.router1_transport_domain_name}.${data.terraform_remote_state.lke_state.outputs.cluster_domain_name}"
-    public_router_role = "public-routers"
+    source                    = "../modules/ziti-router-nginx"
+    name                      = "router1"
+    namespace                 = data.terraform_remote_state.lke_state.outputs.ziti_namespace
+    ctrl_endpoint             = "${data.terraform_remote_state.lke_state.outputs.ziti_controller_ctrl_internal_host}:443"
+    edge_advertised_host      = "router1.${data.terraform_remote_state.lke_state.outputs.dns_zone}"
+    transport_advertised_host = "router1-transport.${data.terraform_remote_state.lke_state.outputs.dns_zone}"
+    ziti_charts               = var.ziti_charts
+    router_properties         = {
+        isTunnelerEnabled = true
+        roleAttributes = [
+            "public-routers"
+        ]
+    }
 }

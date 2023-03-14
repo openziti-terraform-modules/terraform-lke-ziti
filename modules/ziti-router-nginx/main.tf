@@ -11,7 +11,12 @@ resource "restapi_object" "ziti_router" {
     debug       = true
     provider    = restapi
     path        = "/edge-routers"
-    data = jsonencode(var.router_properties)
+    # merge maps - last wins
+    data = jsonencode(merge(
+        var.default_router_properties,
+        var.router_properties,
+        {name=var.name}
+    ))
 }
 
 data "template_file" "ziti_router_values" {
@@ -22,15 +27,11 @@ data "template_file" "ziti_router_values" {
             service = {
                 enabled = "true"
                 type = "ClusterIP"
-                ingress = {
-                    enabled = "true"
-                    ingressClassName = "nginx"
-                    annotations = {
-                        "kubernetes.io/ingress.allow-http" = "false"
-                        "nginx.ingress.kubernetes.io/ssl-passthrough" = "true"
-                        "nginx.ingress.kubernetes.io/secure-backends" = "true"
-                    }
-                }
+            }
+            ingress = {
+                enabled = "true"
+                ingressClassName = "nginx"
+                annotations = var.ingress_annotations
             }
         }
         linkListeners = {
@@ -44,11 +45,7 @@ data "template_file" "ziti_router_values" {
                 ingress = {
                     enabled = "true"
                     ingressClassName = "nginx"
-                    annotations = {
-                        "kubernetes.io/ingress.allow-http" = "false"
-                        "nginx.ingress.kubernetes.io/ssl-passthrough" = "true"
-                        "nginx.ingress.kubernetes.io/secure-backends" = "true"
-                    }
+                    annotations = var.ingress_annotations
                 }
             }
         }

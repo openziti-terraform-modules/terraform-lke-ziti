@@ -29,5 +29,21 @@ variable "storage_class" {
 }
 
 variable "router_properties" {
-    description = "declared map of router properties"
+    description = "declared map of router properties overrides defaults except name"
+}
+
+variable "default_router_properties" {
+    description = "default properties for the router created by this module"
+    default = {
+        isTunnelerEnabled = true
+    }
+}
+
+variable "ingress_annotations" {
+    description = "annotations on the router's ingress resource to trigger ingress-nginx controller"
+    default = {
+        "kubernetes.io/ingress.allow-http" = "false"
+        "nginx.ingress.kubernetes.io/ssl-passthrough" = "true"
+        "nginx.ingress.kubernetes.io/secure-backends" = "true"
+    }
 }
