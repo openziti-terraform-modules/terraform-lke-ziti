@@ -93,7 +93,7 @@ resource "restapi_object" "client_identity" {
 resource "local_file" "client_identity" {
     depends_on = [restapi_object.client_identity]
     content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
-    filename   = "/tmp/lke-edge-client.jwt"
+    filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.label}.jwt"
 }
 
 module "mgmt_service" {
