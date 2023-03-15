@@ -272,31 +272,6 @@ This first TF plan creates the LKE cluster. This one deploys the OpenZiti Contro
 
 1. Visit the Management API reference in a web browser. https://localhost:1280/edge/management/v1/docs
 
-
-## Apply the OpenZiti Controller Plan
-
-This TF plan deploys an OpenZiti Controller and the OpenZiti Console with a Let's Encrypt certificate.
-
-1. Initialize the workspace.
-
-    ```bash
-    (cd ./plan-15-controller/; terraform init;)
-    ```
-
-1. Perform a dry run.
-
-    ```bash
-    (cd ./plan-15-controller/; terraform plan;)
-    ```
-
-1. Apply the plan.
-
-    ```bash
-    (cd ./plan-15-controller/; terraform apply;)
-    ```
-
-1. Test cluster connection.
-
 ## Apply the Router Terraform Plan
 
 This plan will deploy an OpenZiti Router. The main reason it's separate from the first plan is that the OpenZiti Terraform Provider gets configuration input from the Kubernetes plan's TF state.
@@ -318,6 +293,8 @@ This plan will deploy an OpenZiti Router. The main reason it's separate from the
     ```bash
     (cd ./plan-20-router/; terraform apply;)
     ```
+
+The router will appear "online=true" in a minute or two.
 
 ## Apply the Services Terraform Plan
 
