@@ -148,55 +148,15 @@ resource "linode_domain_record" "wildcard_record" {
     ttl_sec     = var.wildcard_ttl_sec
 }
 
-module "ziti_controller" {
-    depends_on       = [
-        module.cert_manager, 
-        helm_release.trust_manager, 
-        helm_release.ingress_nginx
-    ]
-    source = "../modules/ziti-controller-nginx"
-    ziti_charts = var.ziti_charts
-    ziti_controller_release = var.ziti_controller_release
-    ziti_namespace = var.ziti_namespace
-    dns_zone = var.dns_zone
-}
-
-resource "helm_release" "ziti_console" {
-    depends_on       = [helm_release.ingress_nginx]
-    name             = var.ziti_console_release
-    namespace        = var.ziti_namespace
-    repository       = "https://openziti.github.io/helm-charts"
-    chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-console" : "ziti-console"
-    version          = "<0.3"
-    values           = [yamlencode({
-        ingress = {
-            enabled = "true"
-            ingressClassName = "nginx"
-            annotations = {
-                "cert-manager.io/cluster-issuer" = var.cluster_issuer_name
-            }
-            advertisedHost = "console.${var.dns_zone}"
-            tlsSecret = "${var.ziti_console_release}-tls-secret"
-        }
-        settings = {
-            edgeControllers = [{
-                name = "Ziti Edge Mgmt API"
-                url = "https://${var.ziti_controller_release}-mgmt.${var.ziti_namespace}.svc:443"
-                default = "true"
-            }]
-        }
-    })]
-}
-
 resource "null_resource" "wait_for_dns" {
     depends_on = [linode_domain_record.wildcard_record]
-    # triggers = {
-    #     always_run = "${timestamp()}"
-    # }
+    triggers = {
+        always_run = "${timestamp()}"
+    }
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
-                -e client_dns=client.${var.dns_zone} \
+                -e client_dns=wildcard.${var.dns_zone} \
                 -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
         EOF
     }

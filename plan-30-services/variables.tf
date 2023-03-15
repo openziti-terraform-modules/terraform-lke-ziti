@@ -3,19 +3,9 @@ variable "domain_name" {
     default = null
 }
 
-variable "router1_release" {
+variable "router_name" {
     description = "Helm release name for router1"
-    default = "ziti-router1"
-}
-
-variable "router1_transport_domain_name" {
-    description = "DNS name for the transport service router1 provides to other routers"
-    default = "router1-transport"
-}
-
-variable "router1_edge_domain_name" {
-    description = "DNS name for the edge service router1 provides to edge SDK clients"
-    default = "router1-edge"
+    default = "router1"
 }
 
 variable "service1_namespace" {
@@ -23,9 +13,9 @@ variable "service1_namespace" {
     default = "default"
 }
 
-variable "service1_release" {
+variable "service_name" {
     description = "Helm release name for service1"
-    default = "webhook-server1"
+    default = "testapi1"
 }
 
 variable "ziti_charts" {

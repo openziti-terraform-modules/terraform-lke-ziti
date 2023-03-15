@@ -2,16 +2,16 @@
 
 Take OpenZiti for a spin with Terraform on Kubernetes. This will guide you to apply a Terraform plan for each stage:
 
-1. Create a cluster with OpenZiti installed and ready for Console and CLI access.
-1. Provision your first OpenZiti router.
-1. Configure some OpenZiti Services.
+1. Create a cluster with cert-manager and ingress-nginx.
+1. Deploy OpenZiti and enable Console and CLI access.
+1. Provision an OpenZiti router.
+1. Create some OpenZiti Services for cluster workloads.
 1. Configure your OpenZiti Client for network access.
 
 ## Kubernetes Services
 
 * `ingress-nginx` w/ Nodebalancer
-* `cert-manager` w/ Let's Encrypt issuer
-* `trust-manager`
+* `cert-manager` w/ Let's Encrypt issuer and `trust-manager`
 * `ziti-controller`
 * `ziti-console`
 * `ziti-router`
@@ -32,7 +32,6 @@ Take OpenZiti for a spin with Terraform on Kubernetes. This will guide you to ap
 * `k9s`
 * `curl`
 * `jq`
-
 
 ## Delegate DNS
 
@@ -78,7 +77,7 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
     ```hcl
     label = "my-ziti-cluster"
     email = "me@example.com"
-    domain_name = "my-ziti-cluster.example.com"
+    dns_zone = "my-ziti-cluster.example.com"
     region = "us-west"
     pools = [
         {
@@ -87,6 +86,7 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
         }
     ]
     tags = ["alice-ziti-lab"]
+    LINODE_TOKEN={token}  # or set env var TF_VAR_LINODE_TOKEN
     ```
 
 1. Initialize the workspace.
@@ -134,12 +134,13 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
 1. Check the certificate. If it's from "(STAGING) Let's Encrypt" then the certificate issuer is working. If not, it's probably DNS.
 
     ```bash
-    openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 \
-        | openssl x509 -noout -subject -issuer
+    openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null \
+        |& openssl x509 -noout -subject -issuer
     ```
 
     ```bash
-    $ openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null 2>&1 | openssl x509 -noout -subject -issuer
+    $ openssl s_client -connect console.my-ziti-cluster.example.com:443 <> /dev/null \
+        |& openssl x509 -noout -subject -issuer
     subject=CN = console.my-ziti-cluster.example.com
     issuer=C = US, O = (STAGING) Let's Encrypt, CN = (STAGING) Artificial Apricot R3
     ```
@@ -149,6 +150,28 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
     ```bash
     cluster_issuer_name = "cert-manager-production"
     cluster_issuer_server = "https://acme-v02.api.letsencrypt.org/directory"
+    ```
+
+## Apply the OpenZiti Controller Terraform Plan
+
+This first TF plan creates the LKE cluster. This one deploys the OpenZiti Controller.
+
+1. Initialize the workspace.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform init;)
+    ```
+
+1. Perform a dry run.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform plan;)
+    ```
+
+1. Apply the plan.
+
+    ```bash
+    (cd ./plan-15-controller/; terraform apply;)
     ```
 
 1. Probe the Ziti ingresses. Swap in the following subdomains (substituting your parent zone) to the same `openssl` command you used to probe the console above. All server certificates were issued by the controller's edge signer CA. You can configure [advanced PKI](https://docs.openziti.io/helm-charts/charts/ziti-controller/#advanced-pki) with Helm values.
@@ -193,10 +216,10 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
 
     ```bash
     # find the pod name
-    kubectl --namespace ziti-controller get pods
+    kubectl --namespace ziti get pods
 
     # exec in the controller pod
-    kubectl --namespace ziti-controller exec \
+    kubectl --namespace ziti exec \
         --stdin --tty \
         ziti-controller-6c79575bb4-lh9nt \
         --container ziti-controller-admin -- \
@@ -249,7 +272,6 @@ This first TF plan creates the LKE cluster and installs an OpenZiti Controller a
 
 1. Visit the Management API reference in a web browser. https://localhost:1280/edge/management/v1/docs
 
-
 ## Apply the Router Terraform Plan
 
 This plan will deploy an OpenZiti Router. The main reason it's separate from the first plan is that the OpenZiti Terraform Provider gets configuration input from the Kubernetes plan's TF state.
@@ -271,6 +293,8 @@ This plan will deploy an OpenZiti Router. The main reason it's separate from the
     ```bash
     (cd ./plan-20-router/; terraform apply;)
     ```
+
+The router will appear "online=true" in a minute or two.
 
 ## Apply the Services Terraform Plan
 
@@ -325,7 +349,7 @@ This plan will help you get started using OpenZiti Services with a Tunneler.
 1. Test the demo API.
 
     ```bash
-    curl -sSf -XPOST -d ziti=awesome http://webhook.ziti/post | jq .data
+    curl -sSf -XPOST -d ziti=awesome http://testapi.ziti/post | jq .data
     ```
 
 1. Use the Kubernetes API over Ziti
