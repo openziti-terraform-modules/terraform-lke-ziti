@@ -14,6 +14,10 @@ terraform {
             source = "qrkourier/restapi"
             version = "~> 1.23.0"
         }
+        tls = {
+            source = "hashicorp/tls"
+            version = "4.0.4"
+        }
     }
 }
 
@@ -24,11 +28,19 @@ data "terraform_remote_state" "k8s_state" {
     }
 }
 
+data "terraform_remote_state" "controller_state" {
+    backend = "local"
+    config = {
+        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+    }
+}
+
 provider restapi {
-    uri                   = "https://mgmt.ziti:443/edge/management/v1"
-    cacerts_file          = "${path.root}/../plan-10-k8s/.terraform/tmp/ctrl-plane-cas.crt"
-    ziti_username         = "${data.terraform_remote_state.k8s_state.outputs.ziti_admin_username}"
-    ziti_password         = "${data.terraform_remote_state.k8s_state.outputs.ziti_admin_password}"
+    # uri                   = "https://mgmt.ziti:443/edge/management/v1"  # Ziti service address depends on a running tunneler with Ziti identity loaded
+    uri                   = "https://${data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
+    cacerts_string        = (data.terraform_remote_state.controller_state.outputs.ctrl_plane_cas).data["ctrl-plane-cas.crt"]
+    ziti_username         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-user"]
+    ziti_password         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-password"]
 }
 
 provider "helm" {
@@ -41,17 +53,49 @@ provider "helm" {
     }
 }
 
-# resource "null_resource" "kubeconfig_ansible_playbook" {
-#     depends_on = [
-#         linode_lke_cluster.linode_lke,
-#         restapi_object.k8sapi_service
-#     ]
-#     provisioner "local-exec" {
-#         command = <<-EOF
-#             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
-#         EOF
-#         environment = {
-#             K8S_AUTH_KUBECONFIG = "../kube-config"
-#         }
-#     }
-# }
+data "restapi_object" "admin_identity_lookup" {
+    provider     = restapi
+    path         = "/identities"
+    search_key   = "name"
+    search_value = "Default Admin"
+}
+
+data "tls_certificate" "admin_client_cert_chain" {
+    content = (data.terraform_remote_state.controller_state.outputs.admin_client_cert).data["tls.crt"]
+}
+resource "local_file" "write_client_cert" {
+    filename = "../admin-client-cert.crt"
+    content = element(data.tls_certificate.admin_client_cert_chain.certificates, (length(data.tls_certificate.admin_client_cert_chain.certificates) - 1)).cert_pem
+}
+
+resource "local_file" "write_client_cert_key" {
+    filename = "../admin-client-cert.key"
+    content = (data.terraform_remote_state.controller_state.outputs.admin_client_cert).data["tls.key"]
+}
+
+resource "local_file" "ctrl_plane_cas" {
+    filename = "../ctrl-plane-cas.crt"
+    content = (data.terraform_remote_state.controller_state.outputs.ctrl_plane_cas).data["ctrl-plane-cas.crt"]
+}
+
+resource "restapi_object" "cert_authenticator" {
+    provider           = restapi
+    path               = "/authenticators"
+    data               = jsonencode({
+        method = "cert"
+        identityId = jsondecode(data.restapi_object.admin_identity_lookup.api_response).data.id
+        certPem = element(data.tls_certificate.admin_client_cert_chain.certificates, (length(data.tls_certificate.admin_client_cert_chain.certificates) - 1)).cert_pem
+    })
+}
+
+
+resource "null_resource" "kubeconfig_ansible_playbook" {
+    provisioner "local-exec" {
+        command = <<-EOF
+            ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
+        EOF
+        environment = {
+            K8S_AUTH_KUBECONFIG = "../../kube-config"
+        }
+    }
+}

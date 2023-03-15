@@ -24,3 +24,7 @@ output "cluster_issuer_name" {
     description = "issues Let's Encrypt certificate for the console"
     value = var.cluster_issuer_name
 }
+
+output "cluster_label" {
+    value = var.label
+}
