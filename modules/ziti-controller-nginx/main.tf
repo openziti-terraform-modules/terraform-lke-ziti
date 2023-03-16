@@ -68,6 +68,7 @@ resource "helm_release" "ziti_controller" {
 }
 
 data "kubernetes_secret" "admin_password_secret" {
+    depends_on = [helm_release.ziti_controller]
     metadata {
         name = "${var.ziti_controller_release}-admin-secret"
         namespace = var.ziti_namespace
@@ -75,6 +76,7 @@ data "kubernetes_secret" "admin_password_secret" {
 }
 
 data "kubernetes_secret" "admin_client_cert_secret" {
+    depends_on = [helm_release.ziti_controller]
     metadata {
         name = "${var.ziti_controller_release}-admin-client-secret"
         namespace = var.ziti_namespace
@@ -82,6 +84,7 @@ data "kubernetes_secret" "admin_client_cert_secret" {
 }
 
 data "kubernetes_config_map" "ctrl_trust_bundle" {
+    depends_on = [helm_release.ziti_controller]
     metadata {
         name = "${var.ziti_controller_release}-ctrl-plane-cas"
         namespace = var.ziti_namespace
