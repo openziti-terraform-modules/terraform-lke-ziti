@@ -90,11 +90,11 @@ resource "restapi_object" "client_identity" {
     })
 }
 
-resource "local_file" "client_identity" {
-    depends_on = [restapi_object.client_identity]
-    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
-    filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.label}.jwt"
-}
+# resource "local_file" "client_identity_enrollment" {
+#     depends_on = [restapi_object.client_identity]
+#     content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+#     filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
+# }
 
 module "mgmt_service" {
     source                   = "../modules/simple-tunneled-service"
@@ -130,48 +130,68 @@ resource "restapi_object" "testapi_host_identity" {
     })
 }
 
-resource "null_resource" "enroll_testapi_host_identity" {
+# resource "null_resource" "enroll_testapi_host_identity" {
+#     depends_on = [restapi_object.testapi_host_identity]
+#     provisioner "local-exec" {
+#         command = <<-EOF
+#             ziti edge enroll \
+#                 --jwt <(echo '${jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt}') \
+#                 --out ${path.root}/.terraform/testapi-host.json
+#         EOF
+#         interpreter = ["bash", "-c"]
+#     }
+# }
+
+# resource "restapi_object" "testapi_host_enrollment" {
+#     provider           = restapi
+#     path               = "/enrollment"
+#     data               = jsonencode({
+#         method = "ott"
+#         expiresAt = timeadd(timestamp(), "1h")
+#         identityId = restapi_object.testapi_host_identity.api_data.data.id
+#     })
+# }
+
+# data "local_file" "testapi_host_identity" {
+#     depends_on = [null_resource.enroll_testapi_host_identity]
+#     filename   = "${path.root}/.terraform/testapi-host.json"
+# }
+
+resource "local_file" "testapi_host_identity_enrollment" {
     depends_on = [restapi_object.testapi_host_identity]
-    provisioner "local-exec" {
-        command = <<-EOF
-            ziti edge enroll \
-                --jwt <(echo '${jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt}') \
-                --out ${path.root}/.terraform/testapi-host.json
-        EOF
-        interpreter = ["bash", "-c"]
-    }
+    content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+    filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
 }
-
-data "local_file" "testapi_host_identity" {
-    depends_on = [null_resource.enroll_testapi_host_identity]
-    filename   = "${path.root}/.terraform/testapi-host.json"
-}
-
 resource "helm_release" "testapi_host" {
     depends_on    = [
-        null_resource.enroll_testapi_host_identity,
-        module.testapi_service
+        # null_resource.enroll_testapi_host_identity,
+        module.testapi_service,
+        local_file.testapi_host_identity_enrollment
     ]
     chart         = var.ziti_charts != "" ? "${var.ziti_charts}/httpbin" : "httpbin"
     version       = ">=0.1.8"
     repository    = "https://openziti.github.io/helm-charts"
     name          = "testapi-host"
     namespace     = "default"
+    wait       = false  # hooks don't run if wait=true!?
     set             {
         name      = "zitiServiceName"
         value     = "testapi-service"
     }
     set_sensitive   {
-        name      = "zitiIdentityEncoding"
-        value     = base64encode(data.local_file.testapi_host_identity.content)
+        name      = "zitiEnrollment"
+        value     = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
         type      = "auto"
     }
 }
 
+# This Ziti service is hosted by the Ziti fork of go-httpbin which uses the Ziti
+# Edge SDK with a Ziti identity to listen on the overlay instead of the normal
+# IP network.
 module "testapi_service" {
     source                   = "../modules/simple-tunneled-service"
-    upstream_address         = "httpbin.default.svc"
-    upstream_port            = 8080
+    upstream_address         = "dummystring"  # Ziti hosted servers have no address
+    upstream_port            = 4321           # Ziti hosted servers have no port
     intercept_address        = "testapi.ziti"
     intercept_port           = 80
     role_attributes          = ["testapi-services"]

@@ -41,3 +41,6 @@ lke-cluster-config.yaml
 charts/
 
 .helm/
+/*.crt
+/*.jwt
+/*.key
