@@ -90,11 +90,11 @@ resource "restapi_object" "client_identity" {
     })
 }
 
-# resource "local_file" "client_identity_enrollment" {
-#     depends_on = [restapi_object.client_identity]
-#     content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
-#     filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
-# }
+resource "local_file" "client_identity_enrollment" {
+    depends_on = [restapi_object.client_identity]
+    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+    filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
+}
 
 module "mgmt_service" {
     source                   = "../modules/simple-tunneled-service"
@@ -157,16 +157,14 @@ resource "restapi_object" "testapi_host_identity" {
 #     filename   = "${path.root}/.terraform/testapi-host.json"
 # }
 
-resource "local_file" "testapi_host_identity_enrollment" {
-    depends_on = [restapi_object.testapi_host_identity]
-    content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
-    filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
-}
+# resource "local_file" "testapi_host_identity_enrollment" {
+#     depends_on = [restapi_object.testapi_host_identity]
+#     content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+#     filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
+# }
 resource "helm_release" "testapi_host" {
     depends_on    = [
-        # null_resource.enroll_testapi_host_identity,
-        module.testapi_service,
-        local_file.testapi_host_identity_enrollment
+        module.testapi_service
     ]
     chart         = var.ziti_charts != "" ? "${var.ziti_charts}/httpbin" : "httpbin"
     version       = ">=0.1.8"
