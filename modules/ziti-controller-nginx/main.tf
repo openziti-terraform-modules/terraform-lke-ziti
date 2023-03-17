@@ -53,7 +53,7 @@ resource "helm_release" "ziti_controller" {
             }
         }
         persistence = {
-            storageClass = var.storage_class
+            storageClass = var.storage_class != "-" ? var.storage_class : ""
         }
         cert-manager = {
             enabled = false
