@@ -25,7 +25,7 @@ variable "ziti_charts" {
 
 variable "storage_class" {
     description = "storage class to fulfill this router's persistent volume claim"
-    default = ""
+    default = "-"
 }
 
 variable "router_properties" {

@@ -59,7 +59,7 @@ variable "mgmt_dns_san" {
 
 variable "storage_class" {
     description = "storage class to fulfill this controller's persistent volume claim"
-    default = ""
+    default = "-"
 }
 
 variable "ingress_annotations" {

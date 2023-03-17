@@ -57,11 +57,11 @@ resource "helm_release" "ziti_router" {
             }
         }
         persistence = {
-            storageClass = try(var.storage_class, "")
+            storageClass = var.storage_class != "-" ? var.storage_class : ""
         }
         ctrl = {
             endpoint = var.ctrl_endpoint
         }
-        enrollmentJwt = try(jsondecode(restapi_object.ziti_router.api_response).data.enrollmentJwt, "dummystring")
+        enrollmentJwt = try(jsondecode(restapi_object.ziti_router.api_response).data.enrollmentJwt, "-")
     })]
 }

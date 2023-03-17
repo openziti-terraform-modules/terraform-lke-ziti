@@ -92,7 +92,7 @@ resource "restapi_object" "client_identity" {
 
 resource "local_file" "client_identity_enrollment" {
     depends_on = [restapi_object.client_identity]
-    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "-")
     filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
 }
 
@@ -159,7 +159,7 @@ resource "restapi_object" "testapi_host_identity" {
 
 # resource "local_file" "testapi_host_identity_enrollment" {
 #     depends_on = [restapi_object.testapi_host_identity]
-#     content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+#     content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "-")
 #     filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
 # }
 resource "helm_release" "testapi_host" {
@@ -178,7 +178,7 @@ resource "helm_release" "testapi_host" {
     }
     set_sensitive   {
         name      = "zitiEnrollment"
-        value     = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "dummystring")
+        value     = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "-")
         type      = "auto"
     }
 }
@@ -188,8 +188,8 @@ resource "helm_release" "testapi_host" {
 # IP network.
 module "testapi_service" {
     source                   = "../modules/simple-tunneled-service"
-    upstream_address         = "dummystring"  # Ziti hosted servers have no address
-    upstream_port            = 4321           # Ziti hosted servers have no port
+    upstream_address         = "noop"  # Ziti hosted servers have no address
+    upstream_port            = 54321   # Ziti hosted servers have no port
     intercept_address        = "testapi.ziti"
     intercept_port           = 80
     role_attributes          = ["testapi-services"]
