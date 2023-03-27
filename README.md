@@ -374,10 +374,11 @@ Destroy the Terraform Plans in reverse order if you plan on re-using the directo
 You can tear down the cluster like this.
 
 ```bash
-(cd ./plan-40-client/; terraform destroy;)
-(cd ./plan-30-services/; terraform destroy;)
-(cd ./plan-20-router/; terraform destroy;)
-(cd ./plan-10-k8s/; terraform destroy;)
+(cd ./plan-40-client/;     terraform destroy;)
+(cd ./plan-30-services/;   terraform destroy;)
+(cd ./plan-20-router/;     terraform destroy;)
+(cd ./plan-15-controller/; terraform destroy;)
+(cd ./plan-10-k8s/;        terraform destroy;)
 ```
 
 In your Tunneler, i.e. Desktop Edge, remember to forget your identity. The OpenZiti Identity named "edge-client" in your Tunneler, that is.
