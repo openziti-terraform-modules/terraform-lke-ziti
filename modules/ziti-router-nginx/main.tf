@@ -28,6 +28,10 @@ resource "helm_release" "ziti_router" {
     version    = "<0.3"
     wait       = false  # hooks don't run if wait=true!?
     values     = [yamlencode({
+        image = {
+            repository = var.image_repo
+            tag = var.image_tag
+        }
         edge = {
             advertisedHost = var.edge_advertised_host
             advertisedPort = 443
