@@ -47,3 +47,13 @@ variable "ingress_annotations" {
         "nginx.ingress.kubernetes.io/secure-backends" = "true"
     }
 }
+
+variable "image_repo" {
+    description = "debug value for alternative container image repo"
+    default = "openziti/ziti-router"
+}
+
+variable "image_tag" {
+    description = "debug value for container image tag"
+    default = ""
+}

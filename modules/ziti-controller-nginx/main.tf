@@ -6,6 +6,13 @@ resource "helm_release" "ziti_controller" {
     repository       = "https://openziti.github.io/helm-charts"
     chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-controller" : "ziti-controller"
     values           = [yamlencode({
+        image = {
+            repository = var.image_repo
+            tag = var.image_tag
+            admin = {
+                repository = var.admin_image_repo
+            }
+        }
         clientApi = {
             advertisedHost = "${var.client_domain_name}.${var.dns_zone}"
             advertisedPort = 443
@@ -49,6 +56,12 @@ resource "helm_release" "ziti_controller" {
             }
             service = {
                 enabled = true
+                type = "ClusterIP"
+            }
+        }
+        prometheus = {
+            service = {
+                enabled = var.prometheus_enabled
                 type = "ClusterIP"
             }
         }

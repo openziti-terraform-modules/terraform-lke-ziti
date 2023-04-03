@@ -70,3 +70,24 @@ variable "ingress_annotations" {
         "nginx.ingress.kubernetes.io/secure-backends" = "true"
     }
 }
+
+variable "prometheus_enabled" {
+    description = "enable Prometheus metrics collection"
+    default = "true"
+    type = string
+}
+
+variable "image_repo" {
+    description = "debug value for alternative container image repo"
+    default = "openziti/ziti-controller"
+}
+
+variable "admin_image_repo" {
+    description = "debug value for alternative admin container image repo"
+    default = "openziti/ziti-cli"
+}
+
+variable "image_tag" {
+    description = "debug value for container image tag"
+    default = ""
+}
