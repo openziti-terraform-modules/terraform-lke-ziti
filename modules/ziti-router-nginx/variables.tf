@@ -32,6 +32,11 @@ variable "router_properties" {
     description = "declared map of router properties overrides defaults except name"
 }
 
+variable "values" {
+    description = "additional values to merge with the Helm chart overrides any that conflict"
+    default = {}
+}
+
 variable "default_router_properties" {
     description = "default properties for the router created by this module"
     default = {

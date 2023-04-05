@@ -64,6 +64,14 @@ module "ziti_controller" {
     ziti_controller_release = var.ziti_controller_release
     ziti_namespace = data.terraform_remote_state.k8s_state.outputs.ziti_namespace
     dns_zone = data.terraform_remote_state.k8s_state.outputs.dns_zone
+    storage_class = var.storage_class
+    values = {
+        fabric = {
+            events = {
+                enabled = true
+            }
+        }
+    }
 }
 
 resource "helm_release" "ziti_console" {

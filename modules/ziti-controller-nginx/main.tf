@@ -5,7 +5,7 @@ resource "helm_release" "ziti_controller" {
     version          = "~> 0.2"
     repository       = "https://openziti.github.io/helm-charts"
     chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-controller" : "ziti-controller"
-    values           = [yamlencode({
+    values           = [yamlencode(merge({
         image = {
             repository = var.image_repo
             tag = var.image_tag
@@ -77,7 +77,9 @@ resource "helm_release" "ziti_controller" {
         ingress-nginx = {
             enabled = false
         }
-    })]
+    },
+    var.values
+    ))]
 }
 
 data "kubernetes_secret" "admin_password_secret" {

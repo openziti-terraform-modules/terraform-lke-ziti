@@ -91,3 +91,8 @@ variable "image_tag" {
     description = "debug value for container image tag"
     default = ""
 }
+
+variable "values" {
+    description = "additional Helm chart values override any other values"
+    default = {}
+}

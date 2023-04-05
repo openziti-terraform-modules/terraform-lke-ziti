@@ -1,6 +1,3 @@
-persistence:
-  storageClass: linode-block-storage  # append "-keep" to class name to preserve after release
-
 edge:
   advertisedHost: ${router1_edge}
   advertisedPort: 443

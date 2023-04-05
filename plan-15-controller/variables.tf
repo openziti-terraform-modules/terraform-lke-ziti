@@ -15,3 +15,7 @@ variable "ziti_console_release" {
     description = "Name of Helm release for OpenZiti Console"
 }
 
+variable "storage_class" {
+    description = "Storage class to use for persistent volumes"
+    default = ""
+}

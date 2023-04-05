@@ -27,7 +27,7 @@ resource "helm_release" "ziti_router" {
     chart      = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-router" : "ziti-router"
     version    = "<0.3"
     wait       = false  # hooks don't run if wait=true!?
-    values     = [yamlencode({
+    values     = [yamlencode(merge({
         image = {
             repository = var.image_repo
             tag = var.image_tag
@@ -67,5 +67,7 @@ resource "helm_release" "ziti_router" {
             endpoint = var.ctrl_endpoint
         }
         enrollmentJwt = try(jsondecode(restapi_object.ziti_router.api_response).data.enrollmentJwt, "-")
-    })]
+    },
+    var.values
+    ))]
 }

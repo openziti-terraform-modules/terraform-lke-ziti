@@ -107,7 +107,7 @@ module "cert_manager" {
             dns01 = {
                 digitalocean = {
                     tokenSecretRef = {
-                        key = "access-token"
+                        key = "token"
                         name = "digitalocean-dns"
                     }
                 }
@@ -130,6 +130,10 @@ resource "kubernetes_secret" "digitalocean_token" {
 resource "kubernetes_namespace" ziti {
     metadata {
         name = var.ziti_namespace
+        labels = {
+            # this label is selected by trust-manager to sync the CA trust bundle
+            "openziti.io/namespace": "enabled"
+        }
     }
 }
 
