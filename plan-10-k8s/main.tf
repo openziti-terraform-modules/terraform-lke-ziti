@@ -166,6 +166,15 @@ resource "helm_release" "ingress_nginx" {
             extraArgs = {
                 enable-ssl-passthrough = "true"
             }
+            metrics = {
+                enabled = true
+                service = {
+                    annotations = {
+                        "prometheus.io/port" = "10254"
+                        "prometheus.io/scrape" = "true"
+                    }
+                }
+            }
         }
     })]
 }
