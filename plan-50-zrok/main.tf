@@ -138,7 +138,7 @@ data "template_file" "zrok_values" {
         influxdb2 = {
             enabled = false  # declared separately in helm_release.influxdb2
             service = {
-                url = "http://influxdb.zrok.svc"
+                url = "http://influxdb-influxdb2.zrok.svc"
             }
         }
         image = {
@@ -216,7 +216,7 @@ data "template_file" "zrok_values" {
 }
 
 resource "local_file" "zrok_values" {
-    count = 0  # set to 1 to write out the rendered values file
+    count = 1  # set to 1 to write out the rendered values file
     filename = "/tmp/zrok-values.yaml"
     content = data.template_file.zrok_values.rendered
 }

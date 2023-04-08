@@ -68,7 +68,3 @@ variable "wildcard_ttl_sec" {
 variable "ziti_namespace" {
     default     = "ziti"
 }
-
-variable "cert_manager_webhook_linode_git" {
-    default = "https://github.com/0xch4z/cert-manager-webhook-linode.git"
-}
