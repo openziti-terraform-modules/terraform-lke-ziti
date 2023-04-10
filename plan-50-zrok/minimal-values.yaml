@@ -1,0 +1,40 @@
+controller:
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: "cert-manager-production"
+    className: "nginx"
+    enabled: true
+    hosts:
+      - host: "zrok.ziti.example.com"
+        paths:
+          - path: "/"
+            pathType: "ImplementationSpecific"
+    tls:
+      - hosts:
+          - "zrok.ziti.example.com"
+        secretName: "zrok-controller-ingress-tls"
+frontend:
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: "cert-manager-production"
+    className: "nginx"
+    enabled: true
+    hosts:
+      - host: "*.ziti.example.com"
+        paths:
+          - path: "/"
+            pathType: "ImplementationSpecific"
+    tls:
+      - hosts:
+          - "*.ziti.example.com"
+        secretName: "zrok-frontend-ingress-tls"
+dnsZone: "ziti.example.com"
+influxdb2:
+  enabled: false
+  service:
+    url: "http://influxdb-influxdb2.zrok.svc"
+ziti:
+  advertisedHost: "ziti-controller-mgmt.ziti.svc"
+  ca_cert_configmap: "ziti-controller-ctrl-plane-cas"
+  password: "redacted"
+  username: "admin"

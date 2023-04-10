@@ -60,10 +60,18 @@ module "ziti_router_public" {
     edge_advertised_host      = "router1.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
     transport_advertised_host = "router1-transport.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
     ziti_charts               = var.ziti_charts
+    storage_class             = var.storage_class
     router_properties         = {
         isTunnelerEnabled = true
         roleAttributes = [
             "public-routers"
         ]
+    }
+    values = {
+        fabric = {
+            events = {
+                enabled = true
+            }
+        }
     }
 }

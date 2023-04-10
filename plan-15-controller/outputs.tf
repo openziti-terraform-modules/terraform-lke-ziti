@@ -8,6 +8,10 @@ output "ctrl_plane_cas" {
     value = module.ziti_controller.ctrl_plane_cas
 }
 
+output "ctrl_plane_cas_configmap" {
+    value = module.ziti_controller.ctrl_plane_cas_configmap
+}
+
 output "admin_client_cert" {
     sensitive = true
     value = module.ziti_controller.admin_client_cert

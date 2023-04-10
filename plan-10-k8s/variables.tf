@@ -2,6 +2,10 @@ variable "LINODE_TOKEN" {
     description = "Your Linode API Personal Access Token. (required)"
 }
 
+variable "DO_TOKEN" {
+    type = string
+    description = "Digital Ocean API token for solving ACME DNS01 challenges by managing TXT records in the cluster DNS zone."
+}
 variable "email" {
     description = "The email address cert-manager should submit during ACME request to Let's Encrypt for server certs. (required)"
 }
@@ -64,4 +68,3 @@ variable "wildcard_ttl_sec" {
 variable "ziti_namespace" {
     default     = "ziti"
 }
-

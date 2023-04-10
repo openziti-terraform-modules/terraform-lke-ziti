@@ -26,12 +26,21 @@ terraform {
             source  = "hashicorp/kubernetes"
             version = "2.0.1"
         }
+        digitalocean = {
+            source = "digitalocean/digitalocean"
+            version = "2.27.1"
+        }
     }
 }
 
 provider "linode" {
     token = var.LINODE_TOKEN
 }
+
+provider "digitalocean" {
+    token = var.DO_TOKEN
+}
+
 
 provider "helm" {
     repository_config_path = "${path.root}/.helm/repositories.yaml" 
@@ -83,11 +92,48 @@ module "cert_manager" {
         name = "enableCertificateOwnerRef"
         value = "true"
     }]
+    solvers = [
+        {
+            http01 = {
+                ingress = {
+                    class = "nginx"
+                }
+            },
+        },
+        {
+            selector = {
+                dnsZones = [var.dns_zone]
+            },
+            dns01 = {
+                digitalocean = {
+                    tokenSecretRef = {
+                        key = "token"
+                        name = "digitalocean-dns"
+                    }
+                }
+            }
+        }
+    ]
+}
+
+resource "kubernetes_secret" "digitalocean_token" {
+    type = "Opaque"
+    metadata {
+        name      = "digitalocean-dns"
+        namespace = "cert-manager"
+    }
+    data = {
+        token = var.DO_TOKEN
+    }
 }
 
 resource "kubernetes_namespace" ziti {
     metadata {
         name = var.ziti_namespace
+        labels = {
+            # this label is selected by trust-manager to sync the CA trust bundle
+            "openziti.io/namespace": "enabled"
+        }
     }
 }
 
@@ -133,26 +179,23 @@ data "kubernetes_service" "ingress_nginx_controller" {
     }
 }
 
-resource "linode_domain" "cluster_zone" {
-    type      = "master"
-    domain    = var.dns_zone
-    soa_email = var.email
-    tags      = var.tags
+resource "digitalocean_domain" "cluster_zone" {
+    name = var.dns_zone
 }
 
-resource "linode_domain_record" "wildcard_record" {
-    domain_id   = linode_domain.cluster_zone.id
-    name        = "*"
-    record_type = "A"
-    target      = data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
-    ttl_sec     = var.wildcard_ttl_sec
+resource "digitalocean_record" "wildcard_record" {
+    domain    = digitalocean_domain.cluster_zone.id
+    name      = "*"
+    type      = "A"
+    value     = data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
+    ttl       = var.wildcard_ttl_sec
 }
 
-resource "null_resource" "wait_for_dns" {
-    depends_on = [linode_domain_record.wildcard_record]
-    triggers = {
-        always_run = "${timestamp()}"
-    }
+resource "terraform_data" "wait_for_dns" {
+    depends_on = [digitalocean_record.wildcard_record]
+    triggers_replace = [
+        timestamp()
+    ]
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \

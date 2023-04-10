@@ -3,6 +3,11 @@ variable "router1_name" {
     default = "router1"
 }
 
+variable "storage_class" {
+    description = "Storage class to use for persistent volumes"
+    default = ""
+}
+
 variable "service1_namespace" {
     description = "namespace to place service1"
     default = "default"
