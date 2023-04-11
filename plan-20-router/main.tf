@@ -69,7 +69,7 @@ module "ziti_router_public" {
     }
     values = {
         fabric = {
-            events = {
+            metrics = {
                 enabled = true
             }
         }
