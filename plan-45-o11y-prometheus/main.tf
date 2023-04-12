@@ -57,21 +57,34 @@ provider "helm" {
 locals {
 }
 
-resource "terraform_data" "helm_update" {
-    count = 0 # set to 1 to trigger helm repo update
-    triggers_replace = [
-        timestamp()
-    ]
-    provisioner "local-exec" {
-        command = "helm repo update openziti"
-    }
-}
+# resource "terraform_data" "helm_update" {
+#     count = 0 # set to 1 to trigger helm repo update
+#     triggers_replace = [
+#         timestamp()
+#     ]
+#     provisioner "local-exec" {
+#         command = "helm repo update openziti"
+#     }
+# }
 
-resource "random_password" "grafana_password" {
-    length           = 16
-    special          = true
-    override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# resource "random_password" "grafana_password" {
+#     length           = 16
+#     special          = true
+#     override_special = "!#$%&*()-_=+[]{}<>:?"
+# }
+
+# resource "kubernetes_secret" "grafana_password" {
+#     depends_on = [
+#         kubernetes_namespace.monitoring
+#     ]
+#     metadata {
+#         name      = "grafana-password"
+#         namespace = "monitoring"
+#     }
+#     data = {
+#         admin-password = random_password.grafana_password.result
+#     }
+# }
 
 resource "kubernetes_namespace" "monitoring" {
     metadata {
@@ -92,11 +105,12 @@ resource "helm_release" "prometheus" {
     name          = "prometheus-stack"
     namespace     = "monitoring"
     # wait       = false  # hooks don't run if wait=true!?
-    set {
-        # set the admin password for the Grafana UI
-        name  = "grafana.adminPassword"
-        value = random_password.grafana_password.result
-    }
+    # let the chart generate the grafana password and save it in namespace monitoring/{{ include "grafana.fullname" . }}
+    # set {
+    #     # set the admin password for the Grafana UI
+    #     name  = "grafana.adminPassword"
+    #     value = random_password.grafana_password.result
+    # }
     # these allow Prometheus to discover the ServiceMonitors and PodMonitors in other namespaces
     set {
         name  = "prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues"
@@ -108,16 +122,54 @@ resource "helm_release" "prometheus" {
     }
     values = [yamlencode({
         grafana = {
-            dashboards = {
-                default = {
-                    nginx-overview = {
-                        url = "https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/grafana/dashboards/nginx.json"
-                    }
-                    nginx-requests = {
-                        url = "https://github.com/kubernetes/ingress-nginx/raw/main/deploy/grafana/dashboards/request-handling-performance.json"
-                    }
+            sidecar = {
+                dashboards = {
+                    # this pairs with the default value of
+                    # sidecar.dashboards.label to select configmaps that define
+                    # dashboards
+                    labelValue = "true"
                 }
             }
         }
     })]
 }
+
+resource "kubernetes_config_map" "nginx_overview_dashboard" {
+    metadata {
+        name      = "nginx-overview-dashboard"
+        namespace = "monitoring"
+        labels = {
+            "grafana_dashboard" = "true"
+        }
+    }
+    data = {
+        "nginx-overview.json" = file("${path.root}/dashboards/nginx-overview.json")
+    }
+}
+
+resource "kubernetes_config_map" "nginx_requests_dashboard" {
+    metadata {
+        name      = "nginx-requests-dashboard"
+        namespace = "monitoring"
+        labels = {
+            "grafana_dashboard" = "true"
+        }
+    }
+    data = {
+        "nginx-requests.json" = file("${path.root}/dashboards/nginx-requests.json")
+    }
+}
+
+resource "kubernetes_config_map" "openziti_dashboard" {
+    metadata {
+        name      = "openziti-dashboard"
+        namespace = "monitoring"
+        labels = {
+            "grafana_dashboard" = "true"
+        }
+    }
+    data = {
+        "openziti.json" = file("${path.root}/dashboards/openziti.json")
+    }
+}
+
