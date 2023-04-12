@@ -168,10 +168,10 @@ resource "helm_release" "ingress_nginx" {
             }
             metrics = {
                 enabled = true
-                service = {
-                    annotations = {
-                        "prometheus.io/port" = "10254"
-                        "prometheus.io/scrape" = "true"
+                serviceMonitor = {
+                    enabled = true
+                    additionalLabels = {
+                        release = "prometheus-stack"
                     }
                 }
             }

@@ -27,7 +27,7 @@ data "terraform_remote_state" "k8s_state" {
 data "terraform_remote_state" "controller_state" {
     backend = "local"
     config = {
-        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+        path = "${path.root}/../plan-15-ziti-controller/terraform.tfstate"
     }
 }
 
@@ -170,7 +170,7 @@ resource "helm_release" "testapi_host" {
     version       = ">=0.1.8"
     repository    = "https://openziti.github.io/helm-charts"
     name          = "testapi-host"
-    namespace     = "default"
+    namespace     = "ziti"  # not necessary to share a namespace with the controller or router, but convenient for debugging
     wait       = false  # hooks don't run if wait=true!?
     set             {
         name      = "zitiServiceName"

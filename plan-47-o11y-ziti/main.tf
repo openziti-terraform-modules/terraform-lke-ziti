@@ -39,14 +39,14 @@ data "terraform_remote_state" "k8s_state" {
 data "terraform_remote_state" "controller_state" {
     backend = "local"
     config = {
-        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+        path = "${path.root}/../plan-15-ziti-controller/terraform.tfstate"
     }
 }
 
 data "terraform_remote_state" "router_state" {
     backend = "local"
     config = {
-        path = "${path.root}/../plan-20-router/terraform.tfstate"
+        path = "${path.root}/../plan-20-ziti-router/terraform.tfstate"
     }
 }
 
@@ -58,15 +58,15 @@ provider restapi {
 }
 
 provider "kubernetes" {
-        host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
-        token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
-        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+    host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
+    token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
+    cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
 }
 
 provider "kubectl" {
-        host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
-        token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
-        cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
+    host                   = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.server
+    token                  = yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).users[0].user.token
+    cluster_ca_certificate = base64decode(yamldecode(base64decode(data.terraform_remote_state.k8s_state.outputs.kubeconfig)).clusters[0].cluster.certificate-authority-data)
 }
 
 provider "helm" {
@@ -82,15 +82,15 @@ provider "helm" {
 locals {
 }
 
-resource "terraform_data" "helm_update" {
-    count = 0 # set to 1 to trigger helm repo update
-    triggers_replace = [
-        timestamp()
-    ]
-    provisioner "local-exec" {
-        command = "helm repo update openziti"
-    }
-}
+# resource "terraform_data" "helm_update" {
+#     count = 0 # set to 1 to trigger helm repo update
+#     triggers_replace = [
+#         timestamp()
+#     ]
+#     provisioner "local-exec" {
+#         command = "helm repo update openziti"
+#     }
+# }
 
 data "restapi_object" "router_identity_lookup" {
     provider     = restapi
@@ -113,41 +113,7 @@ resource "restapi_object" "router_identity" {
     })
 }
 
-resource "random_password" "grafana_password" {
-    length           = 16
-    special          = true
-    override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "kubernetes_namespace" "monitoring" {
-    metadata {
-        name = "monitoring"
-        labels = {
-            # this label is selected by trust-manager to sync the CA trust bundle
-            "openziti.io/namespace": "enabled"
-        }
-    }
-}
-
-resource "helm_release" "prometheus" {
-    depends_on = [
-        kubernetes_namespace.monitoring
-    ]
-    chart         = "kube-prometheus-stack"
-    repository    = "https://prometheus-community.github.io/helm-charts"
-    name          = "prometheus-stack"
-    namespace     = "monitoring"
-    # wait       = false  # hooks don't run if wait=true!?
-    set {
-        name  = "grafana.adminPassword"
-        value = random_password.grafana_password.result
-    }
-}
-
 resource "kubernetes_manifest" "ziti_service_monitor" {
-    depends_on = [
-        helm_release.prometheus
-    ]
     manifest = {
         apiVersion = "monitoring.coreos.com/v1"
         kind = "ServiceMonitor"
@@ -188,16 +154,31 @@ resource "kubernetes_manifest" "ziti_service_monitor" {
     }
 }
 
+module "prometheus_service" {
+    source                   = "../modules/simple-tunneled-service"
+    upstream_address         = "prometheus-operated.monitoring.svc"
+    upstream_port            = 9090
+    intercept_address        = "prometheus.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    intercept_port           = 80
+    role_attributes          = ["monitoring-services"]
+    bind_identity_roles      = ["#monitoring-hosts"]
+    dial_identity_roles      = ["#monitoring-clients"]
+    name                     = "prometheus"
+}
+
 module "grafana_service" {
     source                   = "../modules/simple-tunneled-service"
     upstream_address         = "prometheus-stack-grafana.monitoring.svc"
     upstream_port            = 80
-    intercept_address        = "monitoring.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    intercept_address        = "grafana.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
     intercept_port           = 80
     role_attributes          = ["monitoring-services"]
-    name                     = "monitoring"
+    bind_identity_roles      = ["#monitoring-hosts"]
+    dial_identity_roles      = ["#monitoring-clients"]
+    name                     = "grafana"
 }
 
+# find the id of "edge-client" identity
 data "restapi_object" "client_identity_lookup" {
     provider     = restapi
     path         = "/identities"
@@ -205,11 +186,13 @@ data "restapi_object" "client_identity_lookup" {
     search_value = "edge-client"
 }
 
+# append #monitoring-clients to existing client identity's roles
 resource "restapi_object" "client_identity" {
     provider           = restapi
     path               = "/identities"
     update_method      = "PATCH"
     data               = jsonencode({
+        id             = jsondecode(data.restapi_object.client_identity_lookup.api_response).data.id
         roleAttributes = concat(
             jsondecode(data.restapi_object.client_identity_lookup.api_response).data.roleAttributes,
             ["monitoring-clients"]
