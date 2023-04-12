@@ -31,7 +31,7 @@ data "terraform_remote_state" "k8s_state" {
 data "terraform_remote_state" "controller_state" {
     backend = "local"
     config = {
-        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+        path = "${path.root}/../plan-15-ziti-controller/terraform.tfstate"
     }
 }
 
@@ -69,7 +69,7 @@ module "ziti_router_public" {
     }
     values = {
         fabric = {
-            events = {
+            metrics = {
                 enabled = true
             }
         }

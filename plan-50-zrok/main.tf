@@ -39,7 +39,7 @@ data "terraform_remote_state" "k8s_state" {
 data "terraform_remote_state" "controller_state" {
     backend = "local"
     config = {
-        path = "${path.root}/../plan-15-controller/terraform.tfstate"
+        path = "${path.root}/../plan-15-ziti-controller/terraform.tfstate"
     }
 }
 
@@ -77,6 +77,7 @@ locals {
     # influxdb_tls_key_path = "/etc/ssl/private/influxdb.key"
     # influxdb_tls_cert_name = "influxdb-cert"
     # influxdb_tls_cert_secret = "influxdb-cert-secret"
+    influxdb_admin_token = "influxdb-admin-token"
 }
 
 resource "terraform_data" "helm_update" {
@@ -101,7 +102,9 @@ resource "helm_release" "influxdb2" {
     values = [yamlencode({
         adminUser = {
             user = "admin"
-            existingSecret = "influxdb-admin-token"  # created by zrok chart
+            existingSecret = local.influxdb_admin_token  # created by zrok chart
+            organization = "zrok"
+            bucket = "zrok"
         }
         service = {
             type = "ClusterIP"
@@ -125,6 +128,9 @@ resource "kubernetes_namespace" "zrok" {
 }
 
 resource "helm_release" "zrok" {
+    depends_on = [
+        kubernetes_namespace.zrok  # ensure release is deleted before namespace so hooks can create delete jobs
+    ]
     name       = "zrok"
     namespace  = "zrok"
     repository = "https://openziti.github.io/helm-charts/"
@@ -133,12 +139,27 @@ resource "helm_release" "zrok" {
     values     = [data.template_file.zrok_values.rendered]
 }
 
+module "influxdb_service" {
+    source                   = "../modules/simple-tunneled-service"
+    upstream_address         = "influxdb-influxdb2.zrok.svc"
+    upstream_port            = 80
+    intercept_address        = "influxdb.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    intercept_port           = 80
+    role_attributes          = ["monitoring-services"]
+    bind_identity_roles      = ["#monitoring-hosts"]
+    dial_identity_roles      = ["#monitoring-clients"]
+    name                     = "influxdb"
+}
+
 data "template_file" "zrok_values" {
     template = yamlencode({
         influxdb2 = {
             enabled = false  # declared separately in helm_release.influxdb2
             service = {
                 url = "http://influxdb-influxdb2.zrok.svc"
+            }
+            adminUser = {
+                existingSecret = local.influxdb_admin_token
             }
         }
         image = {
@@ -168,7 +189,8 @@ data "template_file" "zrok_values" {
                 enabled = true
                 className = "nginx"
                 annotations = {
-                    "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
+                    "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
+                    # "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
                 }
                 hosts = [{
                     host = "${var.controller_dns_name}.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
@@ -189,13 +211,19 @@ data "template_file" "zrok_values" {
                 storageClass = var.storage_class
                 size = "2Gi"
             }
+            metrics = {
+                limits = {
+                    enforcing = false
+                }
+            }
         }
         frontend = {
             ingress = {
                 enabled = true
                 className = "nginx"
                 annotations = {
-                    "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
+                    # "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
+                    "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
                 }
                 hosts = [{
                     host = "*.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
@@ -216,7 +244,7 @@ data "template_file" "zrok_values" {
 }
 
 resource "local_file" "zrok_values" {
-    count = 1  # set to 1 to write out the rendered values file
+    count = 0  # set to 1 to write out the rendered values file
     filename = "/tmp/zrok-values.yaml"
     content = data.template_file.zrok_values.rendered
 }

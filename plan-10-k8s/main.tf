@@ -166,6 +166,15 @@ resource "helm_release" "ingress_nginx" {
             extraArgs = {
                 enable-ssl-passthrough = "true"
             }
+            metrics = {
+                enabled = true
+                serviceMonitor = {
+                    enabled = true
+                    additionalLabels = {
+                        release = "prometheus-stack"
+                    }
+                }
+            }
         }
     })]
 }

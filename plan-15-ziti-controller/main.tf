@@ -66,6 +66,15 @@ module "ziti_controller" {
     dns_zone = data.terraform_remote_state.k8s_state.outputs.dns_zone
     storage_class = var.storage_class
     values = {
+        prometheus = {
+            service = {
+                enabled = true
+                labels = {
+                    # matched by the label selector on prometheus operator ServiceMonitor resource
+                    "prometheus.openziti.io/scrape" = "true"
+                }
+            }
+        }
         fabric = {
             events = {
                 enabled = true
