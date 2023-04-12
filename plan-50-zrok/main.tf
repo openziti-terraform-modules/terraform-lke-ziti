@@ -77,6 +77,7 @@ locals {
     # influxdb_tls_key_path = "/etc/ssl/private/influxdb.key"
     # influxdb_tls_cert_name = "influxdb-cert"
     # influxdb_tls_cert_secret = "influxdb-cert-secret"
+    influxdb_admin_token = "influxdb-admin-token"
 }
 
 resource "terraform_data" "helm_update" {
@@ -101,7 +102,7 @@ resource "helm_release" "influxdb2" {
     values = [yamlencode({
         adminUser = {
             user = "admin"
-            existingSecret = "influxdb-admin-token"  # created by zrok chart
+            existingSecret = local.influxdb_admin_token  # created by zrok chart
             organization = "zrok"
             bucket = "zrok"
         }
@@ -156,6 +157,9 @@ data "template_file" "zrok_values" {
             enabled = false  # declared separately in helm_release.influxdb2
             service = {
                 url = "http://influxdb-influxdb2.zrok.svc"
+            }
+            adminUser = {
+                existingSecret = local.influxdb_admin_token
             }
         }
         image = {
