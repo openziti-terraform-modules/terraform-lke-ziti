@@ -10,6 +10,10 @@ terraform {
         local = {
             version = "~> 2.1"
         }
+        restapi = {
+            source = "qrkourier/restapi"
+            version = "~> 1.23.0"
+        }
         kubectl = {
             source  = "gavinbunney/kubectl"
             version = "1.13.0"
@@ -30,6 +34,28 @@ data "terraform_remote_state" "k8s_state" {
     config = {
         path = "${path.root}/../plan-10-k8s/terraform.tfstate"
     }
+}
+
+data "terraform_remote_state" "controller_state" {
+    backend = "local"
+    config = {
+        path = "${path.root}/../plan-15-ziti-controller/terraform.tfstate"
+    }
+}
+
+data "terraform_remote_state" "router_state" {
+    backend = "local"
+    config = {
+        path = "${path.root}/../plan-20-ziti-router/terraform.tfstate"
+    }
+}
+
+provider restapi {
+    # uri                   = "https://mgmt.ziti:443/edge/management/v1"  # Ziti service address depends on a running tunneler with Ziti identity loaded
+    uri                   = "https://${data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_external_host}:443/edge/management/v1"
+    cacerts_string        = (data.terraform_remote_state.controller_state.outputs.ctrl_plane_cas).data["ctrl-plane-cas.crt"]
+    ziti_username         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-user"]
+    ziti_password         = (data.terraform_remote_state.controller_state.outputs.ziti_admin_password).data["admin-password"]
 }
 
 provider "kubernetes" {
@@ -173,3 +199,110 @@ resource "kubernetes_config_map" "openziti_dashboard" {
     }
 }
 
+data "restapi_object" "router_identity_lookup" {
+    provider     = restapi
+    path         = "/identities"
+    search_key   = "name"
+    search_value = data.terraform_remote_state.router_state.outputs.ziti_router_identity_name
+}
+
+resource "restapi_object" "router_identity" {
+    depends_on         = [data.restapi_object.router_identity_lookup]
+    provider           = restapi
+    path               = "/identities"
+    update_method      = "PATCH"
+    data               = jsonencode({
+        id             = jsondecode(data.restapi_object.router_identity_lookup.api_response).data.id
+        roleAttributes = concat(
+            jsondecode(data.restapi_object.router_identity_lookup.api_response).data.roleAttributes, 
+            ["monitoring-hosts"]
+        )
+    })
+}
+
+resource "kubernetes_manifest" "ziti_service_monitor" {
+    manifest = {
+        apiVersion = "monitoring.coreos.com/v1"
+        kind = "ServiceMonitor"
+        metadata = {
+            labels = {
+                team = "ziggy-ops"
+                release = "prometheus-stack"
+            }
+            name = "ziti-monitor"
+            namespace = "monitoring"
+        }
+        spec = {
+            endpoints = [
+                {
+                    port = "prometheus"
+                    interval = "30s"
+                    scheme = "https"
+                    tlsConfig = {
+                        # the trust bundle is available in namespace, but I
+                        # don't know how to express in the Prometheus resource,
+                        # or wherever, that it it contains trusted issuer certs
+                        # for scrape targets
+                        insecureSkipVerify = true  
+                    }
+                },
+            ]
+            namespaceSelector = {
+                matchNames = [
+                    "ziti"
+                ]
+            }
+            selector = {
+                matchLabels = {
+                    "prometheus.openziti.io/scrape" = "true"
+                }
+            }
+        }
+    }
+}
+
+module "prometheus_service" {
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+    upstream_address         = "prometheus-operated.monitoring.svc"
+    upstream_port            = 9090
+    intercept_address        = "prometheus.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    intercept_port           = 80
+    role_attributes          = ["monitoring-services"]
+    bind_identity_roles      = ["#monitoring-hosts"]
+    dial_identity_roles      = ["#monitoring-clients"]
+    name                     = "prometheus"
+}
+
+module "grafana_service" {
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+    upstream_address         = "prometheus-stack-grafana.monitoring.svc"
+    upstream_port            = 80
+    intercept_address        = "grafana.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
+    intercept_port           = 80
+    role_attributes          = ["monitoring-services"]
+    bind_identity_roles      = ["#monitoring-hosts"]
+    dial_identity_roles      = ["#monitoring-clients"]
+    name                     = "grafana"
+}
+
+# find the id of "edge-client" identity
+data "restapi_object" "client_identity_lookup" {
+    provider     = restapi
+    path         = "/identities"
+    search_key   = "name"
+    search_value = "edge-client"
+}
+
+# append #monitoring-clients to existing client identity's roles
+resource "restapi_object" "client_identity" {
+    provider           = restapi
+    path               = "/identities"
+    update_method      = "PATCH"
+    data               = jsonencode({
+        id             = jsondecode(data.restapi_object.client_identity_lookup.api_response).data.id
+        roleAttributes = concat(
+            jsondecode(data.restapi_object.client_identity_lookup.api_response).data.roleAttributes,
+            ["monitoring-clients"]
+        )
+    })
+}
