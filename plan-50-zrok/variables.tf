@@ -33,3 +33,8 @@ variable "storage_class" {
     description = "The storage class to use for persistent volumes"
     default     = ""
 }
+variable "zrok_controller_spec_version" {
+    type        = number
+    description = "The zrok controller spec version is '2' until zrok v0.4.0, and then it's '3'"
+    default     = 3
+}
