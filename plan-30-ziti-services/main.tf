@@ -97,7 +97,7 @@ resource "local_file" "client_identity_enrollment" {
 }
 
 module "mgmt_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_internal_host
     upstream_port            = 443
     intercept_address        = "mgmt.ziti"
@@ -107,7 +107,7 @@ module "mgmt_service" {
 }
 
 module "k8sapi_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = "kubernetes.default.svc"
     upstream_port            = 443
     intercept_address        = "kubernetes.default.svc"
@@ -187,7 +187,7 @@ resource "helm_release" "testapi_host" {
 # Edge SDK with a Ziti identity to listen on the overlay instead of the normal
 # IP network.
 module "testapi_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = "noop"  # Ziti hosted servers have no address
     upstream_port            = 54321   # Ziti hosted servers have no port
     intercept_address        = "testapi.ziti"
@@ -197,6 +197,6 @@ module "testapi_service" {
 }
 
 module "public_routers" {
-    source       = "../modules/public-router-policies"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-router-policies?ref=v0.1.0"
     router_roles = ["#public-routers"]
 }

@@ -59,7 +59,7 @@ provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-ma
 }
 
 module "ziti_controller" {
-    source = "../modules/ziti-controller-nginx"
+    source = "github.com/openziti-test-kitchen/terraform-k8s-ziti-controller?ref=v0.1.0"
     ziti_charts = var.ziti_charts
     ziti_controller_release = var.ziti_controller_release
     ziti_namespace = data.terraform_remote_state.k8s_state.outputs.ziti_namespace

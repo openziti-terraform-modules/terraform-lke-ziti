@@ -140,7 +140,7 @@ resource "helm_release" "zrok" {
 }
 
 module "influxdb_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = "influxdb-influxdb2.zrok.svc"
     upstream_port            = 80
     intercept_address        = "influxdb.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
@@ -185,8 +185,10 @@ data "template_file" "zrok_values" {
             ca_cert_configmap = data.terraform_remote_state.controller_state.outputs.ctrl_plane_cas_configmap
         }
         controller = {
+            specVersion = var.zrok_controller_spec_version
             ingress = {
                 enabled = true
+                scheme = "http"
                 className = "nginx"
                 annotations = {
                     "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
@@ -213,13 +215,27 @@ data "template_file" "zrok_values" {
             }
             metrics = {
                 limits = {
-                    enforcing = false
+                    enforcing = true
+                    per_account = {
+                        period = "1m"
+                        limit = {
+                            total = 10
+                        }
+                    }
                 }
+            }
+            email = {
+                host = var.email_host
+                port = var.email_port
+                username = var.email_username
+                password = var.email_password
+                from = var.email_from
             }
         }
         frontend = {
             ingress = {
                 enabled = true
+                scheme = "http"
                 className = "nginx"
                 annotations = {
                     # "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
