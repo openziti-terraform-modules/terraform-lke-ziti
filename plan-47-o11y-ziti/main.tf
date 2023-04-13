@@ -155,7 +155,7 @@ resource "kubernetes_manifest" "ziti_service_monitor" {
 }
 
 module "prometheus_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = "prometheus-operated.monitoring.svc"
     upstream_port            = 9090
     intercept_address        = "prometheus.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
@@ -167,7 +167,7 @@ module "prometheus_service" {
 }
 
 module "grafana_service" {
-    source                   = "../modules/simple-tunneled-service"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = "prometheus-stack-grafana.monitoring.svc"
     upstream_port            = 80
     intercept_address        = "grafana.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
