@@ -235,7 +235,7 @@ data "template_file" "zrok_values" {
         frontend = {
             ingress = {
                 enabled = true
-                scheme = "http"
+                scheme = "https"
                 className = "nginx"
                 annotations = {
                     "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
