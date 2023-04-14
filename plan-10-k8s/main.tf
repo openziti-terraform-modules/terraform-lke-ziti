@@ -24,7 +24,7 @@ terraform {
         }
         kubernetes = {
             source  = "hashicorp/kubernetes"
-            version = "2.0.1"
+            version = "~> 2.19"
         }
         digitalocean = {
             source = "digitalocean/digitalocean"
@@ -125,6 +125,11 @@ resource "kubernetes_secret" "digitalocean_token" {
     data = {
         token = var.DO_TOKEN
     }
+    lifecycle {
+        ignore_changes = [
+            metadata[0].annotations
+        ]
+    }
 }
 
 resource "kubernetes_namespace" ziti {
@@ -135,6 +140,12 @@ resource "kubernetes_namespace" ziti {
             "openziti.io/namespace": "enabled"
         }
     }
+    lifecycle {
+        ignore_changes = [
+            metadata[0].annotations
+        ]
+    }
+
 }
 
 resource "helm_release" "trust_manager" {

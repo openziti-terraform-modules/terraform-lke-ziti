@@ -120,6 +120,11 @@ resource "kubernetes_namespace" "monitoring" {
             "openziti.io/namespace": "enabled"
         }
     }
+    lifecycle {
+        ignore_changes = [
+            metadata[0].annotations
+        ]
+    }
 }
 
 resource "helm_release" "prometheus" {

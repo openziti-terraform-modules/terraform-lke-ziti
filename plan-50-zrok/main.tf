@@ -24,7 +24,7 @@ terraform {
         }
         kubernetes = {
             source  = "hashicorp/kubernetes"
-            version = "2.0.1"
+            version = "~> 2.19"
         }
     }
 }
@@ -124,6 +124,11 @@ resource "kubernetes_namespace" "zrok" {
             # this label is selected by trust-manager to sync the CA trust bundle
             "openziti.io/namespace": "enabled"
         }
+    }
+    lifecycle {
+        ignore_changes = [
+            metadata[0].annotations
+        ]
     }
 }
 

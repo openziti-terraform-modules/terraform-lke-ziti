@@ -53,6 +53,32 @@ provider "helm" {
     }
 }
 
+resource "restapi_object" "client_identity" {
+    debug              = true
+    provider           = restapi
+    path               = "/identities"
+    data               = jsonencode({
+        name           = "edge-client"
+        type           = "Device"
+        isAdmin        = false
+        enrollment     = {
+            ott        = true
+        }
+        roleAttributes = [
+            "testapi-clients",
+            "k8sapi-clients",
+            "mgmt-clients"
+        ]
+    })
+}
+
+resource "local_file" "client_identity_enrollment" {
+    depends_on = [restapi_object.client_identity]
+    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "-")
+    filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
+}
+
+
 data "restapi_object" "admin_identity_lookup" {
     provider     = restapi
     path         = "/identities"
