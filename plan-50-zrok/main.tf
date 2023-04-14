@@ -191,8 +191,8 @@ data "template_file" "zrok_values" {
                 scheme = "http"
                 className = "nginx"
                 annotations = {
-                    "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
-                    # "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
+                    # "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
+                    "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
                 }
                 hosts = [{
                     host = "${var.controller_dns_name}.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
@@ -238,8 +238,8 @@ data "template_file" "zrok_values" {
                 scheme = "http"
                 className = "nginx"
                 annotations = {
-                    # "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
-                    "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
+                    "cert-manager.io/cluster-issuer" = data.terraform_remote_state.k8s_state.outputs.cluster_issuer_name
+                    # "nginx.ingress.kubernetes.io/ssl-redirect" = "false"
                 }
                 hosts = [{
                     host = "*.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
