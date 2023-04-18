@@ -163,6 +163,7 @@ resource "helm_release" "testapi_host" {
 # IP network.
 module "testapi_service" {
     source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+    # source                    = "/home/kbingham/Sites/netfoundry/github/terraform-openziti-service"
     upstream_address         = "noop"  # Ziti hosted servers have no address
     upstream_port            = 54321   # Ziti hosted servers have no port
     intercept_address        = "testapi.ziti"
@@ -172,6 +173,7 @@ module "testapi_service" {
 }
 
 module "public_routers" {
-    source = "github.com/openziti-test-kitchen/terraform-openziti-router-policies?ref=v0.1.0"
+    source = "github.com/openziti-test-kitchen/terraform-openziti-router-policies?ref=v0.1.1"
+    # source                    = "/home/kbingham/Sites/netfoundry/github/terraform-openziti-router-policies"
     router_roles = ["#public-routers"]
 }
