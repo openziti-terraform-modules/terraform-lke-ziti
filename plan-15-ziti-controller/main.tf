@@ -24,7 +24,7 @@ terraform {
         }
         kubernetes = {
             source  = "hashicorp/kubernetes"
-            version = "2.0.1"
+            version = "~> 2.19"
         }
     }
 }
@@ -66,6 +66,11 @@ module "ziti_controller" {
     dns_zone = data.terraform_remote_state.k8s_state.outputs.dns_zone
     storage_class = var.storage_class
     values = {
+        image = {
+            repository = var.container_image_repository
+            tag = var.container_image_tag
+            pullPolicy = var.container_image_pull_policy
+        }
         prometheus = {
             service = {
                 enabled = true

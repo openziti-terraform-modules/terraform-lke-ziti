@@ -19,3 +19,21 @@ variable "storage_class" {
     description = "Storage class to use for persistent volumes"
     default = ""
 }
+
+variable "container_image_repository" {
+    type        = string
+    description = "The ziti-controller container image repository"
+    default     = "docker.io/openziti/ziti-controller"
+}
+
+variable "container_image_tag" {
+    type        = string
+    description = "The ziti-controller container image tag"
+    default     = "latest"
+}
+
+variable "container_image_pull_policy" {
+    type        = string
+    description = "The ziti-controller container image pull policy"
+    default     = "IfNotPresent"
+}

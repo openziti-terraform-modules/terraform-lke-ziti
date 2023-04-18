@@ -71,31 +71,6 @@ resource "restapi_object" "router1_identity" {
     })
 }
 
-resource "restapi_object" "client_identity" {
-    debug              = true
-    provider           = restapi
-    path               = "/identities"
-    data               = jsonencode({
-        name           = "edge-client"
-        type           = "Device"
-        isAdmin        = false
-        enrollment     = {
-            ott        = true
-        }
-        roleAttributes = [
-            "testapi-clients",
-            "k8sapi-clients",
-            "mgmt-clients"
-        ]
-    })
-}
-
-resource "local_file" "client_identity_enrollment" {
-    depends_on = [restapi_object.client_identity]
-    content    = try(jsondecode(restapi_object.client_identity.api_response).data.enrollment.ott.jwt, "-")
-    filename   = "../edge-client-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
-}
-
 module "mgmt_service" {
     source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
     upstream_address         = data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_internal_host
