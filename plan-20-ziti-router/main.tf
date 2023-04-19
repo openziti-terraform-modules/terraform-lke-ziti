@@ -53,7 +53,7 @@ provider "helm" {
 }
 
 module "ziti_router_public" {
-    source = "github.com/openziti-test-kitchen/terraform-k8s-ziti-router?ref=v0.1.0"
+    source = "github.com/openziti-test-kitchen/terraform-k8s-ziti-router?ref=v0.1.2"
     name                      = "router1"
     namespace                 = data.terraform_remote_state.k8s_state.outputs.ziti_namespace
     ctrl_endpoint             = "${data.terraform_remote_state.controller_state.outputs.ziti_controller_ctrl_internal_host}:443"
