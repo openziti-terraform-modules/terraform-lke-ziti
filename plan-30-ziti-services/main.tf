@@ -66,9 +66,21 @@ resource "restapi_object" "router1_identity" {
         id             = jsondecode(data.restapi_object.router1_identity_lookup.api_response).data.id
         roleAttributes = [
             "mgmt-hosts",
-            "k8sapi-hosts"
+            "k8sapi-hosts",
+            "helloweb-hosts"
         ]
     })
+}
+
+
+module "helloweb_service" {
+    source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+    upstream_address         = "${helm_release.helloweb_host.name}.${helm_release.helloweb_host.namespace}.svc"
+    upstream_port            = 80
+    intercept_address        = "helloweb.ziti"
+    intercept_port           = 80
+    role_attributes          = ["helloweb-services"]
+    name                     = "helloweb"
 }
 
 module "mgmt_service" {
@@ -137,6 +149,18 @@ resource "restapi_object" "testapi_host_identity" {
 #     content    = try(jsondecode(restapi_object.testapi_host_identity.api_response).data.enrollment.ott.jwt, "-")
 #     filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
 # }
+resource "helm_release" "helloweb_host" {
+    depends_on    = [
+        module.helloweb_service
+    ]
+    chart         = var.ziti_charts != "" ? "${var.ziti_charts}/hello-toy" : "hello-toy"
+    version       = ">=2.1.0"
+    repository    = "https://openziti.github.io/helm-charts"
+    name          = "helloweb-host"
+    namespace     = "ziti"  # not necessary to share a namespace with the controller or router, but convenient for debugging
+    # wait          = false  # hooks don't run if wait=true!?
+}
+
 resource "helm_release" "testapi_host" {
     depends_on    = [
         module.testapi_service
