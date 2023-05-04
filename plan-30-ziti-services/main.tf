@@ -75,7 +75,11 @@ resource "restapi_object" "router1_identity" {
 
 module "helloweb_service" {
     source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
-    upstream_address         = "${helm_release.helloweb_host.name}.${helm_release.helloweb_host.namespace}.svc"
+    # normally the address should be computed from the Helm release attributes,
+    # but when testing a local chart, we can hardcode the cluster service
+    # address
+    upstream_address         = var.ziti_charts != "" ? "helloweb-host-hello-toy.ziti.svc" : "${helm_release.helloweb_host.name}-${helm_release.helloweb_host.chart}.${helm_release.helloweb_host.namespace}.svc"
+
     upstream_port            = 80
     intercept_address        = "helloweb.ziti"
     intercept_port           = 80
@@ -150,9 +154,6 @@ resource "restapi_object" "testapi_host_identity" {
 #     filename   = "../testapi-host-${data.terraform_remote_state.k8s_state.outputs.cluster_label}.jwt"
 # }
 resource "helm_release" "helloweb_host" {
-    depends_on    = [
-        module.helloweb_service
-    ]
     chart         = var.ziti_charts != "" ? "${var.ziti_charts}/hello-toy" : "hello-toy"
     version       = ">=2.1.0"
     repository    = "https://openziti.github.io/helm-charts"
