@@ -5,7 +5,7 @@ output "kubeconfig" {
 
 resource "local_sensitive_file" "kubeconfig" {
     depends_on   = [linode_lke_cluster.linode_lke]
-    filename     = "../kube-config"
+    filename     = "../kube-config-${terraform.workspace}"
     content      = base64decode(linode_lke_cluster.linode_lke.kubeconfig)
     file_permission = 0600
 }

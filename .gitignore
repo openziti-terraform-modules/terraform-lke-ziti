@@ -14,7 +14,7 @@ crash.log
 # version control.
 #
 # example.tfvars
-my.tfvars
+my*.tfvars
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
@@ -31,7 +31,7 @@ override.tf.json
 # example: *tfplan*
 
 # k8s stuff
-kube-config
+kube-config*
 lke-cluster-config.yaml
 
 # python
@@ -44,3 +44,4 @@ charts/
 /*.crt
 /*.jwt
 /*.key
+kube-config-default

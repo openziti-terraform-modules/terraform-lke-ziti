@@ -66,6 +66,7 @@ resource "restapi_object" "client_identity" {
         }
         roleAttributes = [
             "testapi-clients",
+            "helloweb-clients",
             "k8sapi-clients",
             "mgmt-clients"
         ]
