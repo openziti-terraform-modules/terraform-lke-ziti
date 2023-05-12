@@ -68,6 +68,11 @@ module "ziti_router_public" {
         ]
     }
     values = {
+        image = {
+            repository = var.container_image_repository
+            tag = var.container_image_tag
+            pullPolicy = var.container_image_pull_policy
+        }
         fabric = {
             metrics = {
                 enabled = true

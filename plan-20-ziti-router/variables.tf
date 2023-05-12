@@ -18,3 +18,21 @@ variable "ziti_charts" {
     type = string
     default = ""
 }
+
+variable "container_image_repository" {
+    type        = string
+    description = "The ziti-router container image repository"
+    default     = "docker.io/openziti/ziti-router"
+}
+
+variable "container_image_tag" {
+    type        = string
+    description = "The ziti-router container image tag"
+    default     = "latest"
+}
+
+variable "container_image_pull_policy" {
+    type        = string
+    description = "The ziti-router container image pull policy"
+    default     = "IfNotPresent"
+}
