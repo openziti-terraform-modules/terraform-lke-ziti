@@ -59,7 +59,7 @@ provider "kubectl" {     # duplcates config of provider "kubernetes" for cert-ma
 }
 
 module "ziti_controller" {
-    source = "github.com/openziti-test-kitchen/terraform-k8s-ziti-controller?ref=v0.1.0"
+    source = "github.com/openziti-test-kitchen/terraform-k8s-ziti-controller?ref=v0.1.1"
     ziti_charts = var.ziti_charts
     ziti_controller_release = var.ziti_controller_release
     ziti_namespace = data.terraform_remote_state.k8s_state.outputs.ziti_namespace
@@ -68,7 +68,7 @@ module "ziti_controller" {
     values = {
         image = {
             repository = var.container_image_repository
-            tag = var.container_image_tag
+            tag = var.container_image_tag != "" ? var.container_image_tag : ""
             pullPolicy = var.container_image_pull_policy
         }
         prometheus = {

@@ -116,13 +116,16 @@ resource "restapi_object" "cert_authenticator" {
 }
 
 
-resource "null_resource" "kubeconfig_ansible_playbook" {
+resource "terraform_data" "kubeconfig_ansible_playbook" {
+    triggers_replace = [
+        timestamp()
+    ]
     provisioner "local-exec" {
         command = <<-EOF
             ansible-playbook -vvv ./ansible-playbooks/kubeconfig.yaml
         EOF
         environment = {
-            K8S_AUTH_KUBECONFIG = "../../kube-config"
+            K8S_AUTH_KUBECONFIG = "../../kube-config-default"
         }
     }
 }
