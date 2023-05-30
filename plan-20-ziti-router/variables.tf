@@ -28,7 +28,7 @@ variable "container_image_repository" {
 variable "container_image_tag" {
     type        = string
     description = "The ziti-router container image tag"
-    default     = "latest"
+    default     = ""
 }
 
 variable "container_image_pull_policy" {
