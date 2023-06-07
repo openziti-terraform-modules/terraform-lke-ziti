@@ -93,7 +93,7 @@ resource "helm_release" "ziti_console" {
     namespace        = data.terraform_remote_state.k8s_state.outputs.ziti_namespace
     repository       = "https://openziti.github.io/helm-charts"
     chart            = var.ziti_charts != "" ? "${var.ziti_charts}/ziti-console" : "ziti-console"
-    version          = "<0.3"
+    version          = "~> 0.3"
     values           = [yamlencode({
         ingress = {
             enabled = "true"
