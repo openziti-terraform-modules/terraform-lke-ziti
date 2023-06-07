@@ -140,7 +140,7 @@ resource "helm_release" "zrok" {
     namespace  = "zrok"
     repository = "https://openziti.github.io/helm-charts/"
     chart      = var.ziti_charts != "" ? "${var.ziti_charts}/zrok" : "zrok"
-    # version    = "~> 0.0.1"
+    version    = "~> 0.2"
     values     = [data.template_file.zrok_values.rendered]
 }
 
