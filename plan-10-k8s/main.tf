@@ -1,15 +1,10 @@
 terraform {
-    backend "local" {}
-    # If you want to save state in Terraform Cloud:
-    # Configure these env vars, uncomment cloud {} 
-    # and comment out backend "local" {}
+    # backend "local" {}
+    # cli-driven TF Cloud workflow env vars:
     #   TF_CLOUD_ORGANIZATION
     #   TF_WORKSPACE
-    # cloud {}
+    cloud {}
     required_providers {
-        local = {
-            version = "~> 2.1"
-        }
         linode = {
             source  = "linode/linode"
             version = "1.29.4"
@@ -214,13 +209,32 @@ resource "digitalocean_record" "wildcard_record" {
 resource "terraform_data" "wait_for_dns" {
     depends_on = [digitalocean_record.wildcard_record]
     triggers_replace = [
-        timestamp()
+        var.dns_zone,
+        data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip
     ]
     provisioner "local-exec" {
+        interpreter = [ "bash", "-c" ]
         command = <<-EOF
-            ansible-playbook -vvv ./ansible-playbooks/wait-for-nodebalancer-dns.yaml \
-                -e client_dns=wildcard.${var.dns_zone} \
-                -e nodebalancer_ip=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
+            set -euo pipefail
+            # download a portable binary for resolving DNS records
+            wget -q https://github.com/ameshkov/dnslookup/releases/download/v1.9.1/dnslookup-linux-amd64-v1.9.1.tar.gz
+            tar -xzf dnslookup-linux-amd64-v1.9.1.tar.gz
+            cd ./linux-amd64/
+            ./dnslookup --version >/dev/null
+            NOW=$(date +%s)
+            END=$(($NOW + 310))
+            EXPECTED=${data.kubernetes_service.ingress_nginx_controller.status.0.load_balancer.0.ingress.0.ip}
+            OBSERVED=""
+            until [[ $NOW -ge $END ]] || [[ $OBSERVED == $EXPECTED ]]; do
+                sleep 5
+                # find the last A record in the response
+                OBSERVED=$(RRTYPE=A ./dnslookup wild.${var.dns_zone} 1.1.1.1 | mawk '/ANSWER SECTION/,/IN.*A/ {A=$5}; END {print A};')
+                echo "OBSERVED=$OBSERVED, EXPECTED=$EXPECTED"
+            done
+            if [[ $OBSERVED != $EXPECTED ]]; then
+                echo "DNS record not found after 5 minutes"
+                exit 1
+            fi
         EOF
     }
 }
