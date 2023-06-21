@@ -11,7 +11,7 @@ terraform {
     }
     kubectl = {
       source  = "gavinbunney/kubectl"
-      version = "1.13.0"
+      version = "~> 1.14.0"
     }
     helm = {
       source  = "hashicorp/helm"
@@ -157,6 +157,10 @@ resource "helm_release" "trust_manager" {
     name  = "app.trust.namespace"
     value = var.ziti_namespace
   }
+}
+
+resource "kubectl_manifest" "servicemonitor_crd" {
+	yaml_body = file("${path.module}/crds/servicemonitors.yaml")
 }
 
 resource "helm_release" "ingress_nginx" {
