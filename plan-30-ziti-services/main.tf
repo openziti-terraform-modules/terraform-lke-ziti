@@ -74,7 +74,7 @@ resource "restapi_object" "router1_identity" {
 
 
 module "helloweb_service" {
-  source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+  source = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
   # normally the address should be computed from the Helm release attributes,
   # but when testing a local chart, we can hardcode the cluster service
   # address
@@ -88,7 +88,7 @@ module "helloweb_service" {
 }
 
 module "mgmt_service" {
-  source            = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+  source            = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
   upstream_address  = data.terraform_remote_state.controller_state.outputs.ziti_controller_mgmt_internal_host
   upstream_port     = 443
   intercept_address = "mgmt.ziti"
@@ -98,7 +98,7 @@ module "mgmt_service" {
 }
 
 module "k8sapi_service" {
-  source            = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+  source            = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
   upstream_address  = "kubernetes.default.svc"
   upstream_port     = 443
   intercept_address = "kubernetes.default.svc"
@@ -187,7 +187,7 @@ resource "helm_release" "testapi_host" {
 # Edge SDK with a Ziti identity to listen on the overlay instead of the normal
 # IP network.
 module "testapi_service" {
-  source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+  source = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
   # source                    = "/home/kbingham/Sites/netfoundry/github/terraform-openziti-service"
   upstream_address  = "noop" # Ziti hosted servers have no address
   upstream_port     = 54321  # Ziti hosted servers have no port
@@ -198,7 +198,7 @@ module "testapi_service" {
 }
 
 module "public_routers" {
-  source = "github.com/openziti-test-kitchen/terraform-openziti-router-policies?ref=v0.1.1"
+  source = "github.com/openziti-terraform-modules/terraform-openziti-router-policies?ref=v0.1.1"
   # source                    = "/home/kbingham/Sites/netfoundry/github/terraform-openziti-router-policies"
   router_roles = ["#public-routers"]
 }

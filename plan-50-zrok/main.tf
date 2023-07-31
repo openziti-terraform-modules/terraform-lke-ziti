@@ -145,7 +145,7 @@ resource "helm_release" "zrok" {
 }
 
 module "influxdb_service" {
-  source              = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+  source              = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
   upstream_address    = "influxdb-influxdb2.zrok.svc"
   upstream_port       = 80
   intercept_address   = "influxdb.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"

@@ -177,7 +177,7 @@ resource "restapi_object" "client_identity" {
 }
 
 # module "rancher_service" {
-#     source = "github.com/openziti-test-kitchen/terraform-openziti-service?ref=v0.1.0"
+#     source = "github.com/openziti-terraform-modules/terraform-openziti-service?ref=v0.1.0"
 #     upstream_address         = "rancher.cattle-system.svc"
 #     upstream_port            = 443
 #     intercept_address        = "rancher.${data.terraform_remote_state.k8s_state.outputs.dns_zone}"
