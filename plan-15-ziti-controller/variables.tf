@@ -38,7 +38,12 @@ variable "container_image_pull_policy" {
   default     = "IfNotPresent"
 }
 
-variable "TFC_CONFIGURATION_VERSION_GIT_BRANCH" {
+variable "tf_cloud_remote_state_organization" {
   type    = string
   default = ""
+}
+
+variable "tf_cloud_remote_state_k8s_workspace" {
+	type    = string
+	default = ""
 }

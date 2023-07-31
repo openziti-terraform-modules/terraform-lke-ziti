@@ -30,7 +30,7 @@ provider "tfe" {
 
 data "tfe_outputs" "k8s_state" {
   organization = var.tf_cloud_remote_state_organization
-  workspace    = var.tf_cloud_remote_state_workspace
+  workspace    = var.tf_cloud_remote_state_k8s_workspace
 }
 
 data "terraform_remote_state" "k8s_state" {
