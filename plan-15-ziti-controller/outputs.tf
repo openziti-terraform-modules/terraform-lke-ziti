@@ -18,13 +18,13 @@ output "admin_client_cert" {
 }
 
 output "ziti_controller_mgmt_external_host" {
-  value = nonsensitive(module.ziti_controller.ziti_controller_mgmt_external_host)
+  value = module.ziti_controller.ziti_controller_mgmt_external_host
 }
 
 output "ziti_controller_mgmt_internal_host" {
-  value = nonsensitive(module.ziti_controller.ziti_controller_mgmt_internal_host)
+  value = module.ziti_controller.ziti_controller_mgmt_internal_host
 }
 
 output "ziti_controller_ctrl_internal_host" {
-  value = nonsensitive(module.ziti_controller.ziti_controller_ctrl_internal_host)
+  value = module.ziti_controller.ziti_controller_ctrl_internal_host
 }
