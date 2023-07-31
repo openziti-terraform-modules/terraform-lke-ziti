@@ -5,7 +5,7 @@ output "ziti_admin_password" {
 }
 
 output "ctrl_plane_cas" {
-  value = nonsensitive(module.ziti_controller.ctrl_plane_cas)
+  value = module.ziti_controller.ctrl_plane_cas
 }
 
 output "ctrl_plane_cas_configmap" {
