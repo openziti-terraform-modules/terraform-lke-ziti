@@ -21,7 +21,7 @@ variable "label" {
 
 variable "k8s_version" {
   description = "The Kubernetes version to use for this cluster."
-  default     = "1.25" # Rancher requires <1.26
+  default     = "1.26" # Rancher requires <1.27
 }
 
 variable "region" {
