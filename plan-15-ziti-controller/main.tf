@@ -33,13 +33,6 @@ data "tfe_outputs" "k8s_state" {
   workspace    = var.tf_cloud_remote_state_k8s_workspace
 }
 
-data "terraform_remote_state" "k8s_state" {
-  backend = "local"
-  config = {
-    path = "${path.root}/../plan-10-k8s/terraform.tfstate"
-  }
-}
-
 provider "helm" {
   repository_config_path = "${path.root}/.helm/repositories.yaml"
   repository_cache       = "${path.root}/.helm"
