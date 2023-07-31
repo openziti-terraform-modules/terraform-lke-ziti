@@ -56,7 +56,8 @@ provider "kubectl" { # duplcates config of provider "kubernetes" for cert-manage
 }
 
 module "ziti_controller" {
-  source                  = "github.com/openziti-terraform-modules/terraform-k8s-openziti-controller?ref=v0.1.3"
+  # source                  = "github.com/openziti-terraform-modules/terraform-k8s-openziti-controller?ref=v0.1.3"
+  source                  = "github.com/openziti-terraform-modules/terraform-k8s-openziti-controller?ref=default-router"
   ziti_charts             = var.ziti_charts
   ziti_controller_release = var.ziti_controller_release
   ziti_namespace          = data.tfe_outputs.k8s_state.values.ziti_namespace
