@@ -1,5 +1,5 @@
 variable "domain_name" {
-  description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. Default is to inherit and use the same name as the LKE plan."
+  description = "The domain name zone to maintain in Linode, e.g., ctrl.ziti.example.com. Default is to inherit and use the same name as the LKE plan."
   default     = null
 }
 

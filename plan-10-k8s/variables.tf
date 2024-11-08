@@ -11,7 +11,7 @@ variable "email" {
 }
 
 variable "dns_zone" {
-  description = "The domain name zone to maintain in Linode, e.g., ziti.example.com. (required)"
+  description = "The domain name zone to maintain in Linode, e.g., ctrl.ziti.example.com. (required)"
 }
 
 variable "label" {

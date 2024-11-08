@@ -28,7 +28,7 @@ frontend:
       - hosts:
           - "*.ziti.example.com"
         secretName: "zrok-frontend-ingress-tls"
-dnsZone: "ziti.example.com"
+dnsZone: "ctrl.ziti.example.com"
 influxdb2:
   enabled: false
   service:
